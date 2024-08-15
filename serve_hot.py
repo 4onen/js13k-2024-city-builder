@@ -2,67 +2,87 @@
 """
 A simple hot-reload server for development
 """
+import os
 import sys
 import asyncio
 import functools
 import logging
 from pathlib import Path
+from typing import List
 
 from aiohttp import web
-from watchfiles import awatch
+import watchfiles
 
-SERVE_HOT_JS = Path(__file__).with_suffix(".js").read_bytes()
-
-SCRIPT_HOT_JS = b"<script>%s</script>" % (SERVE_HOT_JS,)
+SCRIPT_HOT_JS = b"""<script>"use strict";
+const u = new URL(window.location);
+u.protocol = u.protocol === "https:" ? "wss:" : "ws:";
+u.hash = "";
+u.search = "";
+u.pathname = "/serve_hot.js";
+const sck = (new WebSocket(u.href, "serve_hot")).addEventListener("message", (event) => {
+    if (event.data === "reload") {
+        window.location.reload();
+    }
+});</script>"""
 
 _logger = logging.getLogger(__name__)
 
-change = asyncio.Event()
+shutdown_event = asyncio.Event()
+
+change_number: int = 0
 
 
-async def watch_path(path: Path, max_error_count: int = 3) -> None:
+async def watch_path(path: Path) -> None:
     """
     Watch a path for changes
     """
+    # pylint: disable-next=global-statement
+    global change_number
     error_count = 0
-    while True:
-        try:
-            async for _ in awatch(path, ignore_permission_denied=False):
-                change.set()
-                await asyncio.sleep(0.1)
-                change.clear()
-        except KeyboardInterrupt:
-            _logger.info("Keyboard interrupt. Exiting...")
-            sys.exit(0)
-        # pylint: disable-next=broad-except
-        except Exception as e:
-            error_count += 1
-            if error_count > max_error_count:
-                _logger.exception(
-                    "Error %s watching path: %s\nExiting...",
-                    error_count,
-                    e,
-                )
-                sys.exit(1)
-            _logger.exception(
-                "Error %s watching path: %s\nWill try to restart...",
-                error_count,
-                e,
-            )
+    try:
+        async for _ in watchfiles.awatch(
+            path,
+            ignore_permission_denied=False,
+            stop_event=shutdown_event,
+        ):
+            _logger.debug("Change %s detected", change_number)
+            # pylint: disable-next=protected-access
+            change_number += 1
+    # pylint: disable-next=broad-except
+    except Exception as e:
+        error_count += 1
+        _logger.exception(
+            "Error %s watching path: %s\nExiting...",
+            error_count,
+            e,
+        )
+        raise SystemExit(1) from e
+    _logger.info("Watching path process shut down.")
 
 
 async def serve_hot_js(request):
     """Serve the hot-reload script or switch to websocket"""
     # If the protocol is websocket, switch to websocket
+    my_change_number = change_number
     if request.headers.get("Upgrade", "").lower() == "websocket":
         ws = web.WebSocketResponse(protocols=["serve_hot"])
         await ws.prepare(request)
-        await change.wait()
-        await ws.send_str("reload")
+        try:
+            while (
+                my_change_number >= change_number
+                and not ws.closed
+                and not shutdown_event.is_set()
+            ):
+                await asyncio.sleep(0.5)
+        except asyncio.CancelledError:
+            pass
+        else:
+            if not ws.closed and not shutdown_event.is_set():
+                await ws.send_str("reload")
         await ws.close()
         return ws
-    # Otherwise, stream the hot-reload script
-    return web.Response(body=SERVE_HOT_JS, content_type="text/javascript")
+    # Otherwise, error because we now inject the script into the page.
+    raise web.HTTPForbidden()
 
 
 CONTENT_TYPES = {
@@ -167,10 +187,48 @@ async def log_every_inbound_request(request, handler):
     return await handler(request)
 
 
-if __name__ == "__main__":
-    import os
+async def my_run_app(
+    app: web.Application,
+    *,
+    host: str = "localhost",
+    port: int = 8080,
+    **kwargs,
+) -> None:
+    """
+    Copy of aiohttp.web._run_app with
+    only the behavior I need
+    """
+    runner = web.AppRunner(
+        app, host=host, port=port, handle_signals=False, **kwargs
+    )
 
-    logging.basicConfig(level=logging.INFO)
+    await runner.setup()
+
+    sites: List[web.BaseSite] = []
+
+    try:
+        if host is not None:
+            sites.append(web.TCPSite(runner, host, port))
+        for site in sites:
+            await site.start()
+
+        names = sorted(str(s.name) for s in runner.sites)
+        print(
+            f"======== Running on {', '.join(names)} ========"
+            "\n(Press CTRL+C to quit)"
+        )
+
+        while True:
+            await asyncio.sleep(3600)
+    finally:
+        await runner.cleanup()
+
+
+def main() -> None:
+    """
+    Main function
+    """
+    logging.basicConfig(level=logging.DEBUG)
 
     if len(sys.argv) == 2:
         root_dir = Path(sys.argv[1])
@@ -195,7 +253,33 @@ if __name__ == "__main__":
 
     # Get the event loop
     loop = asyncio.get_event_loop()
+    loop.set_debug(True)
     # Put the file watching in the background
     loop.create_task(watch_path(Path(".")))
     # Run the server
-    web.run_app(app, host="localhost", port=8080, loop=loop)
+    main_task = loop.create_task(my_run_app(app))
+    _logger.info("Server startup complete.")
+    try:
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(main_task)
+    except (web.GracefulExit, KeyboardInterrupt):
+        _logger.warning("Server shutting down.")
+    # pylint: disable-next=broad-except
+    except Exception as e:
+        _logger.exception("Error running server: %s", e)
+        raise SystemExit(1) from e
+    finally:
+        # All this code copied from asyncio.run for this
+        # one line right here, because my asyncio.Event
+        # setup wasn't getting the CancelledError
+        shutdown_event.set()
+        # pylint: disable-next=protected-access
+        web._cancel_tasks({main_task}, loop)
+        # pylint: disable-next=protected-access
+        web._cancel_tasks(asyncio.all_tasks(loop), loop)
+        loop.run_until_complete(loop.shutdown_asyncgens())
+        loop.close()
+
+
+if __name__ == "__main__":
+    main()
