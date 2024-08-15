@@ -11,7 +11,7 @@ from pathlib import Path
 from aiohttp import web
 from watchfiles import awatch
 
-SERVE_HOT_JS = Path("serve_hot.mjs").read_bytes()
+SERVE_HOT_JS = Path(__file__).with_suffix(".js").read_bytes()
 
 SCRIPT_HOT_JS = b"<script>%s</script>" % (SERVE_HOT_JS,)
 

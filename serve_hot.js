@@ -1,3 +1,4 @@
+"use strict";
 const u = new URL(window.location);
 u.protocol = u.protocol === "https:" ? "wss:" : "ws:";
 u.hash = "";
