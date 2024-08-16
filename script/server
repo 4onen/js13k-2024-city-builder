@@ -1,0 +1,10 @@
+#!/bin/sh
+
+set -e
+
+cd "$(dirname "$0")/.."
+
+script/update
+
+# Start the server
+./serve_hot.py game
