@@ -9,6 +9,7 @@ import functools
 import logging
 from pathlib import Path
 from typing import List
+from argparse import ArgumentParser
 
 from aiohttp import web
 import watchfiles
@@ -158,14 +159,6 @@ async def serve_other(root: Path, request):
     return await serve_file_raw(merged_path)
 
 
-def print_usage():
-    """
-    Print the usage of the script
-    """
-    print("Usage: serve_hot.py [root]")
-    print("  root: The root directory to serve files from")
-
-
 @web.middleware
 async def no_cache_middleware(request, handler):
     """
@@ -187,7 +180,27 @@ async def log_every_inbound_request(request, handler):
     return await handler(request)
 
 
-async def my_run_app(
+def build_app(root_dir: Path) -> web.Application:
+    """
+    Build the application
+    """
+    app = web.Application(
+        logger=_logger,
+        middlewares=[
+            web.normalize_path_middleware(),
+            no_cache_middleware,
+        ],
+    )
+    app.router.add_route("GET", "/serve_hot.js", serve_hot_js)
+    app.router.add_route(
+        "GET", "/{path:.*}", functools.partial(serve_other, root_dir)
+    )
+    app.router.add_route("GET", "/", functools.partial(serve_other, root_dir))
+
+    return app
+
+
+async def my_run_app_task(
     app: web.Application,
     *,
     host: str = "localhost",
@@ -215,7 +228,7 @@ async def my_run_app(
         names = sorted(str(s.name) for s in runner.sites)
         print(
             f"======== Running on {', '.join(names)} ========"
-            "\n(Press CTRL+C to quit)"
+            "\n         (Press CTRL+C to quit)"
         )
 
         while True:
@@ -224,40 +237,25 @@ async def my_run_app(
         await runner.cleanup()
 
 
-def main() -> None:
+def run_app(
+    app: web.Application,
+    *,
+    host: str = "localhost",
+    port: int = 8080,
+    **kwargs,
+) -> None:
     """
-    Main function
+    Run the server on the given host and port
     """
-    logging.basicConfig(level=logging.DEBUG)
-
-    if len(sys.argv) == 2:
-        root_dir = Path(sys.argv[1])
-    else:
-        print_usage()
-        sys.exit(1)
-
-    app = web.Application(
-        logger=_logger,
-        middlewares=[
-            web.normalize_path_middleware(),
-            no_cache_middleware,
-        ],
-    )
-    app.router.add_route("GET", "/serve_hot.js", serve_hot_js)
-    app.router.add_route(
-        "GET", "/{path:.*}", functools.partial(serve_other, root_dir)
-    )
-    app.router.add_route("GET", "/", functools.partial(serve_other, root_dir))
-
-    os.chdir(root_dir)
-
     # Get the event loop
     loop = asyncio.get_event_loop()
     loop.set_debug(True)
     # Put the file watching in the background
     loop.create_task(watch_path(Path(".")))
     # Run the server
-    main_task = loop.create_task(my_run_app(app))
+    main_task = loop.create_task(
+        my_run_app_task(app, host=host, port=port, **kwargs)
+    )
     _logger.info("Server startup complete.")
     try:
         asyncio.set_event_loop(loop)
@@ -279,6 +277,67 @@ def main() -> None:
         web._cancel_tasks(asyncio.all_tasks(loop), loop)
         loop.run_until_complete(loop.shutdown_asyncgens())
         loop.close()
+
+
+def build_arg_parser() -> ArgumentParser:
+    """
+    Build the argument parser
+    """
+    arg_parser = ArgumentParser(
+        prog="serve_hot.py",
+        description=(
+            "Simple static development server with websocket"
+            " hot-reload injected into all served HTML files."
+        ),
+    )
+    # Required argument
+    arg_parser.add_argument(
+        "root",
+        type=Path,
+        help="The root directory to serve files from",
+    )
+    # Optional arguments
+    arg_parser.add_argument(
+        "--host",
+        type=str,
+        default="localhost",
+        help="The host to bind to",
+    )
+    arg_parser.add_argument(
+        "--port",
+        type=int,
+        default=8000,
+        help="The port to bind to",
+    )
+    arg_parser.add_argument(
+        "--log-level",
+        type=str,
+        choices=["DEBUG", "INFO", "WARNING", "ERROR"],
+        default="INFO",
+        help="The logging level to use (default: INFO)",
+    )
+    return arg_parser
+
+
+def main() -> None:
+    """
+    Main function
+    """
+    arg_parser = build_arg_parser()
+    args = arg_parser.parse_args()
+
+    logging.basicConfig(level=args.log_level)
+
+    root_dir = args.root
+    if not root_dir.is_dir():
+        arg_parser.print_usage()
+        print("Error: Root directory must be a directory.")
+        sys.exit(1)
+
+    os.chdir(root_dir)
+
+    app = build_app(root_dir)
+    run_app(app, host=args.host, port=args.port)
 
 
 if __name__ == "__main__":
