@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env env/bin/python3
 """
 A simple hot-reload server for development
 """
