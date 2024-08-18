@@ -3,11 +3,21 @@
 
 ## Programming Articles
 
-* [WebGL2 Smallest Programs](https://webgl2fundamentals.org/webgl/lessons/webgl-smallest-programs.html)
-* [WebGL Anti-Patterns](https://webgl2fundamentals.org/webgl/lessons/webgl-anti-patterns.html)
-* [WebGL2 - Less Code, More Fun](https://webgl2fundamentals.org/webgl/lessons/webgl-less-code-more-fun.html)
-* [GitHub - Scripts to Rule Them All](https://github.com/github/scripts-to-rule-them-all/tree/2e68071ef33c5c6f0d525db00997cd333ff93e8d)
-* [StackOverflow - Smoothed FPS Counter](https://stackoverflow.com/a/7796547/9157179)
+* WebGL2:
+    * [WebGL2 Smallest Programs](https://webgl2fundamentals.org/webgl/lessons/webgl-smallest-programs.html)
+    * [WebGL Anti-Patterns](https://webgl2fundamentals.org/webgl/lessons/webgl-anti-patterns.html)
+    * [WebGL2 - Less Code, More Fun](https://webgl2fundamentals.org/webgl/lessons/webgl-less-code-more-fun.html)
+* Audio/Music:
+    * [Alphabet-Piano](https://xem.github.io/alphabet-piano/)
+    * [Zzfx](https://github.com/KilledByAPixel/ZzFX) - Used for sound effects
+    * [ZzfxM](https://github.com/keithclark/ZzFXM) - Used for music
+* Misc:
+    * [GitHub - Scripts to Rule Them All](https://github.com/github/scripts-to-rule-them-all/tree/2e68071ef33c5c6f0d525db00997cd333ff93e8d)
+    * [StackOverflow - Smoothed FPS Counter](https://stackoverflow.com/a/7796547/9157179)
+
+## Music Inspiration
+
+As I'm building a city builder, I have to go back to the city builder I grew up on: SimCity 4 Deluxe Edition. I don't want to replicate the soundtrack exactly, and I've heard it so many times I practically have it all memorized, but I found the slightly slower bpm of the live cover of "By The Bay" [here](https://www.youtube.com/watch?v=qR4IIKbRflQ) to be a good split from my memory to help me think about it. I also found Charles Cornell's analysis video on the [Sims 1 Building Mode 1 track](https://www.youtube.com/watch?v=IJMds3jT7c8) to be extremely valuable, as those building mode tracks were also a big part of my childhood and fit well into the smaller-scale city builder I'm building.
 
 # Changelog by day
 
@@ -28,3 +38,11 @@ Did I get any work done on my game today? _No. But I did get a lot of work done 
 Today, added the Scripts-To-Rule-Them-All pattern from [https://github.com/github/scripts-to-rule-them-all/](https://github.com/github/scripts-to-rule-them-all/tree/2e68071ef33c5c6f0d525db00997cd333ff93e8d), cleaned up `serve_hot.py`'s requirements and interface (added an `argparse.ArgumentParser`) then implemented a smoothed FPS counter from [this StackOverflow post](https://stackoverflow.com/a/7796547/9157179). To that, I added a cap on the frame number, to cause it to reach a certain number of frames of "history" then continue updating as if it was only at that point. This makes it responsive to current events but not too responsive to outliers. I also capped the number of updates of the display of the FPS counter to 4 times per second to make it legible and prevent it flickering distractingly.
 
 ## 2024-08-16
+
+No progress. (Roommates invited me out to a party.😎)
+
+## 2024-08-17
+
+Researched the WebAudio API and explored options for building my own music system. I came across this neat little [Alphabet-Piano](https://xem.github.io/alphabet-piano/) that I tried referencing for a system of my own, but I realized I would struggle to create audio with something like that in the ways I wanted, and that it was relatively expensive bytes-wise compared to what I eventually chose. I settled on using [Zzfx](https://github.com/KilledByAPixel/ZzFX) for audio, with the add-on [ZzfxM](https://github.com/keithclark/ZzFXM) for music, as the authors' understanding of audio engineering better compressed any sounds than I could have managed and their API is extremely flexible. They also have authoring tools for making the sounds and music in their format, which will save me a bunch of fumbling about in my text editor as I was doing with the Alphabet-Piano.
+
+Also expanded the Makefile to fetch the Zzfx and ZzfxM scripts from GitHub, and changed Scripts-To-Rule-Them-All to use the Makefile for boostrapping, that way if the scripts are already present we won't re-download them.

@@ -4,10 +4,4 @@ set -e
 
 cd "$(dirname "$0")/.."
 
-# Install serve_hot environment
-if [ ! -d "env" ]; then
-    python3 -m venv env
-fi
-
-# Install dependencies
-env/bin/pip install -r server-requirements.txt
+make install_dev
