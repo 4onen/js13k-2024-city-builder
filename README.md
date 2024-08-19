@@ -12,6 +12,9 @@
     * [WebGL2 3D Perspective](https://webgl2fundamentals.org/webgl/lessons/webgl-3d-perspective.html)
     * [WebGL2 Drawing Without Data](https://webgl2fundamentals.org/webgl/lessons/webgl-drawing-without-data.html)
         * [Solid gl.POINTS emulation](https://jsgist.org/?src=6306857bfd65adbdcd54b0051d441935)
+* Shader Programming:
+    * [The Book Of Shaders - Chapter 10: Random](https://thebookofshaders.com/10/)
+    * [The Book Of Shaders - Chapter 11: Noise](https://thebookofshaders.com/11/)
 * Audio/Music:
     * [Alphabet-Piano](https://xem.github.io/alphabet-piano/)
     * [Zzfx](https://github.com/KilledByAPixel/ZzFX) - Used for sound effects
@@ -53,3 +56,7 @@ Researched the WebAudio API and explored options for building my own music syste
 Also expanded the Makefile to fetch the Zzfx and ZzfxM scripts from GitHub, and changed Scripts-To-Rule-Them-All to use the Makefile for boostrapping, that way if the scripts are already present we won't re-download them.
 
 ## Day 6: 2024-08-18
+
+![First development house floating in the void](dev_screenshots/day6_house.png)
+
+We have house! First perspective rendering results today, albeit with zero game engine behind them.
