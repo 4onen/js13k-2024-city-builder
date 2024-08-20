@@ -1,9 +1,9 @@
 "use strict";
 const FOV_RAD = 75 / 180 * Math.PI;
-const NEAR = 0.5;
-const FAR = 100.;
+const NEAR = 0.6;
+const FAR = 10.;
 // I'm indecisive about the building size ok?
-const B = 0.4;
+const B = 0.35;
 const TILE = {
   // Coord system: x right, y up, z out of screen
   VX: new Float32Array([
@@ -43,49 +43,60 @@ const TILE = {
     11, 7, 8,
     8, 7, 4,
   ]),
+  NTRI: 12,
   VS: `#version 300 es
 in vec3 pos;
 out vec3 wp;
 out vec3 mp;
-uniform mat4 m2w;
+flat out int tid;
+flat out float development;
+uniform int sidel;
 uniform mat4 w2v;
 uniform mat4 v2c;
 void main() {
 mp=pos;
-wp=(m2w*vec4(mp,1.)).xyz;
-gl_Position=v2c*w2v*vec4(wp*vec3(1.,0.5,1.),1.);
+tid=gl_InstanceID;
+float iid=float(tid);
+float sidelf=float(sidel);
+wp=vec3(mp.x+mod(iid,sidelf),mp.y,mp.z+floor(iid/sidelf));
+development=mod(iid/90.,2.);
+gl_Position=v2c*w2v*vec4(wp*vec3(1.,development*.5,1.),1.);
 }`,
   FS: `#version 300 es
 precision mediump float;
 in vec3 wp;
 in vec3 mp;
+flat in int tid;
+flat in float development;
 out vec4 outColor;
 float random(vec2 st){return fract(sin(dot(st.xy,vec2(12.9898,78.233)))*43758.5453123);}
 void main() {
-// make uniform
-float development=0.5;
 // make random (subject to uniform pallette)
-vec3 primary_col=vec3(1.0,0.8,0.8);
-vec3 secondary_col=vec3(0.6,0.4,0.4);
+const vec3 primary_col=vec3(1.0,0.8,0.8);
+const vec3 secondary_col=vec3(0.6,0.4,0.4);
 
 float my=mp.y;
 float wy=wp.y;
 float storey=my*development;
-float ft=smoothstep(0.07,0.08,storey);
-float roof=1.-smoothstep(0.9,0.91,my);
+// Square dist to tile center
+float sd=max(abs(mp.x),abs(mp.z));
+// Dist from middle of each storey
+float sy=mod(storey,1.)-0.5;
 vec3 col=primary_col;
-// Footer, roof
-col=mix(secondary_col,col,ft*roof);
-// Grass
-float n=random(floor(25.*wp.xz));
-col=mix(vec3(0.,1.-0.2*n,0.),col,smoothstep(0.01,0.05,storey-0.07*n));
+// Footer, roof, trim all-in-one
+col=mix(col,secondary_col,step(0.4,abs(sy)));
 // Doorways/windows
 float win_grid=step(-0.05,-abs(abs(mp.x)-0.2))+step(-0.05,-abs(abs(mp.z)-0.2));
 float door_grid=step(-0.05,-min(abs(mp.x),abs(mp.z)));
-float win_height=step(-0.7,-mp.y);
-float win_base=step(0.3,mp.y);
-col=mix(col,vec3(0.4,0.6,0.6),win_grid*win_height*win_base);
-col=mix(col,vec3(0.4),door_grid*win_height);
+float door_height=step(-0.7,-storey);
+float win_limits=step(-0.2,-abs(sy));
+col=mix(col,vec3(0.4,0.6,0.6),win_grid*win_limits);
+col=mix(col,vec3(0.4),door_grid*door_height);
+// Grass to path
+float n=random(floor(25.*wp.xz));
+float pathd=step(.4,sd-0.1*n*(1.-0.95*smoothstep(0.0,0.5,development)));
+vec3 grasscol=vec3(pathd,1.-.2*n,pathd);
+col=mix(grasscol,col,smoothstep(0.01,0.05,storey-0.07*n));
 // ret
 outColor=vec4(col, 1);
 }`};
@@ -193,14 +204,15 @@ const resize_canvas_to_display = (gl) => {
   gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
 };
 /**
- * @param {WebGL2RenderingContext} gl 
+ * @param {WebGL2RenderingContext} gl
  */
 const init_gl = (gl) => {
   gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
-  const prog = glProgFromSrc(gl, TILE.VS, TILE.FS, ["pos"], ["m2w", "w2v", "v2c"]);
+  const prog = glProgFromSrc(gl, TILE.VS, TILE.FS, ["pos"], ["w2v", "v2c", "sidel"]);
   gl.useProgram(prog.p);
   gl.clearColor(.1, .1, .1, 1);
   gl.enable(gl.DEPTH_TEST);
+  gl.uniform1i(prog.unifs.sidel, 9.);
   const pos_buf = gl.createBuffer();
   const vao = gl.createVertexArray();
   gl.bindVertexArray(vao);
@@ -217,7 +229,7 @@ const init_gl = (gl) => {
 
   let state = 0;
   /**
-   * @param {DOMHighResTimeStamp} t 
+   * @param {DOMHighResTimeStamp} t
    */
   function drawscene(t) {
     state += time(t);
@@ -228,13 +240,12 @@ const init_gl = (gl) => {
     gl.useProgram(prog.p);
     gl.bindVertexArray(vao);
     gl.bufferData(gl.ARRAY_BUFFER, TILE.VX, gl.STATIC_DRAW);
-    gl.uniformMatrix4fv(prog.unifs.m2w, true, [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
     const aspect = gl.canvas.clientWidth / gl.canvas.clientHeight;
     const s = Math.SQRT1_2;
     gl.uniformMatrix4fv(prog.unifs.w2v, true, [
-      1, 0, 0, -0.1 + 0.5 * Math.sin(2 * state), //x
-      0, s, -s, -0.2, // y
-      0, s, s, 0.3 * Math.sin(state) - 1.6, // z
+      1, 0, 0, -4.6 + 0.5 * Math.sin(2 * state), //x
+      0, s, -s, 1.2, // y
+      0, s, s, 0.3 * Math.sin(state) - 4.6, // z
       0, 0, 0, 1]);
     const f = Math.tan(.5 * (Math.PI - FOV_RAD));
     const range_recip = 1.0 / (NEAR - FAR);
@@ -244,7 +255,7 @@ const init_gl = (gl) => {
       0, 0, (NEAR + FAR) * range_recip, -1,
       0, 0, NEAR * FAR * range_recip * 2, 0,
     ]);
-    gl.drawElements(gl.TRIANGLES, TILE.IDX.length, gl.UNSIGNED_BYTE, 0);
+    gl.drawElementsInstanced(gl.TRIANGLES, TILE.NTRI * 3, gl.UNSIGNED_BYTE, 0, 64);
     requestAnimationFrameId = requestAnimationFrame(drawscene);
   }
 

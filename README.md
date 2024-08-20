@@ -60,3 +60,23 @@ Also expanded the Makefile to fetch the Zzfx and ZzfxM scripts from GitHub, and 
 ![First development house floating in the void](dev_screenshots/day6_house.png)
 
 We have house! First perspective rendering results today, albeit with zero game engine behind them.
+
+## Day 7: 2024-08-19
+
+![Instanced rendering of the first house without an index buffer](dev_screenshots/day7_scrambled_instances.png)
+
+Instanced rendering is difficult when you use `gl.drawArraysInstanced` for a rendering that should be indexed. (For those keeping track, the correct call is `gl.drawElementsInstanced`.)
+
+![Instanced rendering of dozens of houses successfully](dev_screenshots/day7_successful_instances.png)
+
+I got it working, though! And then things started to look great! (To clarify: building "development stages" are currently faked with divisions of the instance ID, not passed in from a real data array.)
+
+![All houses replaced with mounds of grass](dev_screenshots/day7_shader_bugs_are_fun.png)
+
+![Houses stretched strangely between different placements](dev_screenshots/day7_development_stage_exploration.png)
+
+![Houses with glitchy interiors showing and occasional grass roofs](dev_screenshots/day7_grass_roofs.png)
+
+![Instances showing development of a house property from ground level to half-built, showing how the path through the grass nearby develops with the building](dev_screenshots/day7_dynamic_path_growth.png)
+
+## Day 8: 2024-08-20
