@@ -80,3 +80,7 @@ I got it working, though! And then things started to look great! (To clarify: bu
 ![Instances showing development of a house property from ground level to half-built, showing how the path through the grass nearby develops with the building](dev_screenshots/day7_dynamic_path_growth.png)
 
 ## Day 8: 2024-08-20
+
+No progress. LeetCode Daily was a very difficult Hard, and I also chose to stream some of my Angels with Scaly Wings in-progress modding to fellow members of the Angels With Scaly Wings Unofficial Fan Discord.
+
+## Day 9: 2024-08-21
