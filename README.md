@@ -84,3 +84,10 @@ I got it working, though! And then things started to look great! (To clarify: bu
 No progress. LeetCode Daily was a very difficult Hard, and I also chose to stream some of my Angels with Scaly Wings in-progress modding to fellow members of the Angels With Scaly Wings Unofficial Fan Discord.
 
 ## Day 9: 2024-08-21
+
+![Diagonal view of a city growing as high as 4 stories](dev_screenshots/day9_input_and_a_new_perspective.png)
+
+Today I implemented a "system" loop (think UI + frame management) and screened the file out into comment-demarcated sections by functionality. With this system loop, I also implemented input management, allowing us to move the camera around the map! Not a crazy-visible change like the graphics over the past few days, so I decided to take it upon myself to do some matrix math by hand to give the camera a 45 degree swing to the right, giving us a nice isometric-like view that's still full 3D perspective.
+
+## Day 10: 2024-08-22
+

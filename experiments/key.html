@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+</head>
+
+<body>
+    <div id="keyspace"></div>
+    <script type="text/javascript">
+        const handled_keys = new Set(['w', 'a', 's', 'd', 'q', 'e', 'shift']);
+        const keys = new Set();
+        const handle = (e, key, down) => {
+            if (!handled_keys.has(key)) {
+                // return;
+            }
+            e.preventDefault();
+            if (down) {
+                keys.add(key);
+            } else {
+                keys.delete(key);
+            }
+            const new_keyspace = [...keys].join(",");
+            console.log(new_keyspace);
+            document.getElementById('keyspace').innerHTML = new_keyspace;
+        };
+        document.addEventListener('keydown', (e) => handle(e, e.key.toLowerCase(), true));
+        document.addEventListener('keyup', (e) => handle(e, e.key.toLowerCase(), false));
+        console.log("Ready")
+    </script>
+</body>
+
+</html>
