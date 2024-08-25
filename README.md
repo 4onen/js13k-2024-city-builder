@@ -91,3 +91,15 @@ Today I implemented a "system" loop (think UI + frame management) and screened t
 
 ## Day 10: 2024-08-22
 
+No progress. Grocery shopping, exhaustion, and YouTube stole my time.
+
+## Day 11: 2024-08-23
+
+No progress. Simply too tired. I need to get more sleep.
+
+## Day 12: 2024-08-24
+
+No progress. Got more sleep and wound up with a headache _all day_ as a result of not getting enough sleep for so long. Started a custom-system TTRPG with some online friends, though, which was nice.
+
+## Day 13: 2024-08-25
+
