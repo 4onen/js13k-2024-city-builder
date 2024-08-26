@@ -1,22 +1,22 @@
 "use strict";
 
 /**
- * @typedef {{p:WebGLProgram, attrs: Object.<string,GLint>, unifs: Object.<string,GLint>}} MyWebGLProgram
+ * @typedef {{p:WebGLProgram, unifs: Object.<string,GLint>}} MyWebGLProgram
  */
 
 // ===================
 // ==== CONSTANTS ====
 // ===================
 
+const N = 13;
 const TARGET_FPS = 60;
 const TARGET_DT = 1 / TARGET_FPS;
 const SYS_DT = TARGET_DT / 2;
 const FRAMES_FPS_SMOOTHING = 5;
 const FPS_UPDATE_INTERVAL = 0.25;
-const FOV_RAD = 75 / 180 * Math.PI;
 const NEAR = 0.6;
 const FAR = 100.;
-const USED_KEYS = new Set(['w', 'a', 's', 'd', 'arrowup', 'arrowleft', 'arrowdown', 'arrowright']);
+const USED_KEYS = new Set(['w', 'a', 's', 'd', 'arrowup', 'arrowleft', 'arrowdown', 'arrowright', 'shift']);
 
 
 // ====================
@@ -66,16 +66,19 @@ const TILE = {
   ]),
   NTRI: 12,
   VS: `#version 300 es
-// Model position
-in vec3 pos;
+precision mediump float;
+precision mediump int;
+layout(location=0) in vec3 pos;
+layout(location=1) in float devel;
+layout(location=2) in float ttype;
 // World position
 out vec3 wp;
 // Model position
 out vec3 mp;
 // Tile ID
-flat out int tid;
-// Tile development
 flat out float development;
+flat out int tid;
+flat out int ttyp;
 // Sidelength
 uniform int sidel;
 // World offset
@@ -84,53 +87,81 @@ uniform vec2 woff;
 uniform mat4 w2v;
 // View to clip
 uniform mat4 v2c;
+float random(vec2 st){return fract(sin(dot(st.xy,vec2(12.9898,78.233)))*43758.5453123);}
 void main() {
 mp=pos;
 tid=gl_InstanceID;
-float iid=float(tid);
+float iid=float(gl_InstanceID);
 float sidelf=float(sidel);
-wp=vec3(mp.x-mod(iid,sidelf),mp.y,mp.z-floor(iid/sidelf));
-development=pow(iid/40.,2.);
+float dbl = ttype < 0. ? 2. : 1.;
+const float eps = .0002;
+wp=vec3(mp.x*dbl-dbl/2.+1.,mp.y+dbl*eps,mp.z);
+wp.x-=mod(iid+eps,sidelf);
+wp.y*=1.+.1*random(wp.xz);
+wp.z-=floor((iid+eps)/sidelf);
+development=devel;
+ttyp=int(ttype);
 gl_Position=v2c*w2v*vec4(wp*vec3(1.,development*.5,1.)+vec3(woff.x,0.0,woff.y),1.);
 }`,
+  //DEBUG renderer
+  // FS: `#version 300 es\nprecision mediump float;precision mediump int;in vec3 wp;in vec3 mp;flat in float development;flat in int tid;flat in int ttyp;layout(location=0) out vec4 outColor;layout(location=1) out int outTid;void main() {float iid=float(tid);outColor=vec4(mod(iid,7.)/7.,mod(iid,13.)/13.,0.,1.0);}`,
   FS: `#version 300 es
-precision mediump float;
-in vec3 wp;
-in vec3 mp;
-flat in int tid;
-flat in float development;
-out vec4 outColor;
-float random(vec2 st){return fract(sin(dot(st.xy,vec2(12.9898,78.233)))*43758.5453123);}
-void main() {
-// TODO: make random (subject to uniform pallette)
-const vec3 primary_col=vec3(1.0,0.8,0.8);
-const vec3 secondary_col=vec3(0.6,0.4,0.4);
-
-float my=mp.y;
-float wy=wp.y;
-float storey=my*development;
-// Square dist to tile center
-float sd=max(abs(mp.x),abs(mp.z));
-// Dist from middle of each storey
-float sy=mod(storey,1.)-0.5;
-vec3 col=primary_col;
-// Footer, roof, trim all-in-one
-col=mix(col,secondary_col,step(0.4,abs(sy)));
-// Doorways/windows
-float win_grid=step(-0.05,-abs(abs(mp.x)-0.2))+step(-0.05,-abs(abs(mp.z)-0.2));
-float door_grid=step(-0.05,-min(abs(mp.x),abs(mp.z)));
-float door_height=step(-0.7,-storey);
-float win_limits=step(-0.2,-abs(sy));
-col=mix(col,vec3(0.4,0.6,0.6),win_grid*win_limits);
-col=mix(col,vec3(0.4),door_grid*door_height);
-// Grass to path
-float n=random(floor(25.*wp.xz));
-float pathd=step(.4,sd-0.1*n*(1.-0.95*smoothstep(0.0,0.5,development)));
-vec3 grasscol=vec3(pathd,1.-.2*n,pathd);
-col=mix(grasscol,col,smoothstep(0.01,0.05,storey-0.07*n));
-// ret
-outColor=vec4(col, 1);
-}`};
+  precision mediump float;
+  precision mediump int;
+  in vec3 wp;
+  in vec3 mp;
+  flat in float development;
+  flat in int tid;
+  flat in int ttyp;
+  layout(location=0) out vec4 outColor;
+  layout(location=1) out int outTid;
+  float random(vec2 st){return fract(sin(dot(st.xy,vec2(12.9898,78.233)))*43758.5453123);}
+  vec3 primcol() {
+    switch(abs(ttyp)) {
+      case 1: return vec3(1.,.8,.8);
+      case 2: return vec3(.8,.8,1.);
+      default: return vec3(1.,.5,1.);
+    }
+  }
+  vec3 seccol() {
+    switch (abs(ttyp)) {
+      case 1: return vec3(.6,.4,.4);
+      case 2: return vec3(.4,.4,.6);
+      default: return vec3(1.,.0,.8);
+    }
+  }
+  void main() {
+  // TODO: make random (subject to uniform pallette)
+  vec3 primary_col=primcol();
+  vec3 secondary_col=seccol();
+  
+  float my=mp.y;
+  float wy=wp.y;
+  float storey=my*development;
+  // Square dist to tile center
+  float sd=max(abs(mp.x),abs(mp.z));
+  // Dist from middle of each storey
+  float sy=mod(storey,1.)-0.5;
+  vec3 col=primary_col;
+  // Footer, roof, trim all-in-one
+  col=mix(col,secondary_col,step(0.4,abs(sy)));
+  // Doorways/windows
+  float win_grid=step(-0.05,-abs(abs(mp.x)-0.2))+step(-0.05,-abs(abs(mp.z)-0.2));
+  float door_grid=step(-0.06,-min(abs(mp.x),abs(mp.z)));
+  float door_height=step(-0.7,-storey);
+  float win_limits=step(-0.2,-abs(sy));
+  col=mix(col,vec3(0.4,0.6,0.6),win_grid*win_limits);
+  col=mix(col,vec3(0.4),door_grid*door_height);
+  // Grass to path
+  float n=random(floor(25.*wp.xz));
+  float pathd=step(.4,sd-0.2*n*(1.-0.90*smoothstep(0.0,0.5,development)));
+  vec3 grasscol=vec3(pathd,1.-.2*n,pathd);
+  col=mix(grasscol,col,smoothstep(0.01,0.05,storey-0.07*n));
+  // ret
+  outColor=vec4(col*(1.-.1*(development/(1.+4.*my))), 1);
+  outTid=tid;
+}`
+};
 
 // =======================
 // ==== PAGE ELEMENTS ====
@@ -163,7 +194,7 @@ let tile_prog;
 /**
  * @type {WebGLBuffer?}
  */
-let tile_pos_buf, tile_idx_buf;
+let tile_pos_buf, tile_idx_buf, tile_info_buf;
 /**
  * @type {WebGLVertexArrayObject?}
  */
@@ -177,12 +208,13 @@ const keys = new Set();
 // Map states are loaded once per level and should never change w/o reload
 // * e.g. heightmap, sidelength, etc.
 let map = {
-  sidel: 9.,
+  sidel: 7,
 };
 
 // UI states should be able to change every frame, even with sim paused
 // * gtime: Remember "Graphics produces time, physics consumes it" (in bite-sized chunks)
 const ui = {
+  fov: 75,
   cam_x: 0,
   cam_y: 0,
   gtime: 0,
@@ -191,7 +223,11 @@ const ui = {
 // City states should change only on sim steps. Exceptions:
 // * Buildings should place on mousedown
 // * People states (if I get to them) change on frame, to let the GPU do paths.
-const city = {};
+const city = {
+  // Info: "devel" and "typ" floats, packed
+  info: new Float32Array(2. * map.sidel * map.sidel).fill(0.),
+  stats: { typs: [] },
+};
 
 // ===================
 // ==== FUNCTIONS ====
@@ -266,22 +302,20 @@ const glShaderFromSrc = (typ, src) => {
  * @param {string} fs - Fragment Shader source
  * @returns {MyWebGLProgram}
  */
-const glProgFromSrc = (vs, fs, attr_names, uniform_names) => {
+const glProgFromSrc = (vs, fs, uniform_names) => {
   const p = gl.createProgram();
   gl.attachShader(p, glShaderFromSrc(gl.VERTEX_SHADER, vs));
   gl.attachShader(p, glShaderFromSrc(gl.FRAGMENT_SHADER, fs));
   gl.linkProgram(p);
   if (!gl.getProgramParameter(p, gl.LINK_STATUS) && !cl())
     ale("linking prog:\n" + gl.getProgramInfoLog(p));
-  const attrs = {};
-  for (const a of attr_names) {
-    attrs[a] = gl.getAttribLocation(p, a);
-  }
   const unifs = {};
   for (const u of uniform_names) {
     unifs[u] = gl.getUniformLocation(p, u);
+    //DEBUG
+    if (unifs[u] === -1) console.error(a, "not found");
   }
-  return { p, attrs, unifs };
+  return { p, unifs };
 };
 
 const resize_canvas_to_display = () => {
@@ -298,21 +332,33 @@ const resize_canvas_to_display = () => {
 /**
  * Gets and sets up a WebGL2 rendering context
  * 
- * @returns {Void}
+ * @returns {void}
  */
 const init_gl = () => {
   gl = CV.getContext('webgl2', { alpha: false });
+  gl.cullFace(gl.BACK);
   gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
-  tile_prog = glProgFromSrc(TILE.VS, TILE.FS, ["pos"], ["woff", "w2v", "v2c", "sidel"]);
+  tile_prog = glProgFromSrc(TILE.VS, TILE.FS, ["woff", "w2v", "v2c", "sidel"]);
   gl.useProgram(tile_prog.p);
   gl.clearColor(.1, .1, .1, 1);
   gl.enable(gl.DEPTH_TEST);
   tile_vao = gl.createVertexArray();
   gl.bindVertexArray(tile_vao);
-  gl.enableVertexAttribArray(tile_prog.attrs.pos);
   tile_pos_buf = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, tile_pos_buf);
-  gl.vertexAttribPointer(tile_prog.attrs.pos, 3, gl.FLOAT, false, 0, 0);
+  gl.bufferData(gl.ARRAY_BUFFER, TILE.VX, gl.STATIC_DRAW);
+  gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+  gl.enableVertexAttribArray(0);
+  tile_info_buf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, tile_info_buf);
+  gl.bufferData(gl.ARRAY_BUFFER, city.info, gl.STATIC_DRAW);
+  gl.vertexAttribPointer(1, 1, gl.FLOAT, false, 8, 0);
+  gl.vertexAttribPointer(2, 1, gl.FLOAT, false, 8, 4);
+  gl.vertexAttribDivisor(1, 1);
+  gl.vertexAttribDivisor(2, 1);
+  gl.enableVertexAttribArray(1);
+  gl.enableVertexAttribArray(2);
+
   tile_idx_buf = gl.createBuffer();
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, tile_idx_buf);
   gl.bufferData(
@@ -334,7 +380,8 @@ const draw = (t) => {
   // Draw tiles
   gl.useProgram(tile_prog.p);
   gl.bindVertexArray(tile_vao);
-  gl.bufferData(gl.ARRAY_BUFFER, TILE.VX, gl.STATIC_DRAW);
+  gl.bindBuffer(gl.ARRAY_BUFFER, tile_info_buf);
+  gl.bufferData(gl.ARRAY_BUFFER, city.info, gl.STATIC_DRAW);
   gl.uniform1i(tile_prog.unifs.sidel, map.sidel);
   gl.uniform2f(tile_prog.unifs.woff, ui.cam_x, ui.cam_y);
   const s = Math.SQRT1_2;
@@ -345,7 +392,7 @@ const draw = (t) => {
     0, 0, 0, 1,//w
   ]);
   const aspect = gl.canvas.clientWidth / gl.canvas.clientHeight;
-  const f = Math.tan(.5 * (Math.PI - FOV_RAD));
+  const f = Math.tan(Math.PI * .5 * (1 - ui.fov / 180));
   const range_recip = 1.0 / (NEAR - FAR);
   gl.uniformMatrix4fv(tile_prog.unifs.v2c, true, [
     f / aspect, 0, 0, 0,
@@ -358,8 +405,151 @@ const draw = (t) => {
   setTimeout(system_loop);
 };
 
+const recalc_city_stats = () => {
+  const t = {
+    buildings: 0,
+    stories: 0,
+    single: 0,
+    double: 0,
+  };
+  const typs = [
+    Object.assign({}, t),
+    Object.assign({}, t),
+    Object.assign({}, t),
+  ];
+  for (let i = 0; i < map.sidel * map.sidel; i += 1) {
+    const typ = city.info[2 * i + 1];
+    t.buildings += (typ !== 0) + (typ < 0);
+    t.stories += Math.ceil(city.info[2 * i]) * (1 + (typ < 0));
+    t.single += typ > 0;
+    t.double += typ < 0;
+    const t2 = typs[Math.abs(typ)];
+    t2.buildings += 1 + (typ < 0);
+    t2.stories += Math.ceil(city.info[2 * i]) * (1 + (typ < 0));
+    t2.single += typ > 0;
+    t2.double += typ < 0;
+  }
+  t.typs = typs;
+  city.stats = t;
+};
+
+const can_see = (n) => n != N && n != N * N && n != N * N * N && n != N * N * N * N && n != N * N * N * N * N;
+
+
+/**
+ * @param {number} idx 
+ * @param {number} typ 
+ * @returns {bool}
+ */
+const can_place_single_story = (idx, typ) => {
+  let height = city.info[2 * idx];
+  let building = height != Math.ceil(height);
+  return (
+    height < 4 - typ
+    && !building
+    && can_see(city.stats.stories + 1)
+    && can_see(city.stats.typs[Math.abs(typ)].stories + 1)
+    && city.info[2 * idx + 1] >= 0
+  );
+};
+
+/**
+ * @param {number} idx
+ * @param {number} typ
+ * @returns {bool}
+ */
+const can_place_single = (idx, typ) => {
+  return (
+    can_place_single_story(idx, typ)
+    && can_see(city.stats.buildings + 1)
+    && can_see(city.stats.single + 1)
+    && can_see(city.stats.typs[typ].buildings + 1)
+    && can_see(city.stats.typs[typ].single + 1)
+    && city.info[2 * idx + 1] == 0
+  );
+};
+
+/**
+ * @param {number} idx
+ * @param {number} typ
+ * @returns {bool}
+ */
+const can_place_double_story = (idx, typ) => {
+  let height = city.info[2 * idx];
+  let building = height != Math.ceil(height);
+  return (
+    height < 6 - 2 * typ
+    && !building
+    && can_see(city.stats.stories + 2)
+    && can_see(city.stats.typs[typ].stories + 2)
+    && city.info[2 * idx + 2] == 0
+    && city.info[2 * idx + 1] <= 0
+  );
+};
+
+/**
+ * @param {number} idx 
+ * @param {number} typ 
+ * @returns {bool}
+ */
+const can_place_double = (idx, typ) => {
+  return (
+    can_place_double_story(idx, typ)
+    && can_see(city.stats.typs[typ].buildings + 2)
+    && can_see(city.stats.typs[typ].double + 1)
+    && can_see(city.stats.buildings + 2)
+    && idx < (map.sidel * map.sidel - 1)
+    && (idx + 1) % map.sidel > 0
+    && city.info[2 * idx + 1] == 0
+  );
+};
+
+/**
+ * @param {float} dt 
+ */
+const game_frame = (dt) => {
+  recalc_city_stats();
+  const maxidx = map.sidel * map.sidel;
+  let have_built = false;
+  for (let i = 0; i < maxidx; i += 1) {
+    if (i > 0 && city.info[2 * i - 1] < 0) continue;
+    const build = !have_built && Math.random() < 0.1 / maxidx;
+    const is_new = city.info[2 * i + 1] !== 0;
+    const abstyp = 1 + (Math.random() > 0.5);
+    if (build) {
+      if (can_place_double(i, abstyp)) {
+        city.info[2 * i + 1] = -abstyp;
+        city.info[2 * i] += .05;
+        have_built = true;
+      } else if (can_place_single(i, abstyp)) {
+        city.info[2 * i + 1] = abstyp;
+        city.info[2 * i] += .05;
+        have_built = true;
+      } else {
+        const abstyp = Math.abs(city.info[2 * i + 1]);
+        if (abstyp > 0) {
+          if (can_place_double_story(i, abstyp)) {
+            city.info[2 * i] += .05;
+            have_built = true;
+          } else if (can_place_single_story(i, abstyp)) {
+            city.info[2 * i] += .05;
+            have_built = true;
+          }
+        }
+      }
+    }
+    city.info[2 * i] = Math.min(Math.ceil(city.info[2 * i]), city.info[2 * i] + dt);
+  }
+};
+
+/**
+ * @param {float} dt 
+ */
 const system_frame = (dt) => {
-  const s = 2. * dt;
+  let s = 2. * dt;
+  if (kd('shift')) {
+    s *= 3;
+  }
   if (kd('a', 'arrowleft')) {
     ui.cam_x += s;
     ui.cam_y -= s;
@@ -378,6 +568,7 @@ const system_frame = (dt) => {
   }
   ui.cam_x = Math.max(Math.min(ui.cam_x, map.sidel), 0.);
   ui.cam_y = Math.max(Math.min(ui.cam_y, map.sidel), 0.);
+  game_frame(dt);
 };
 
 const system_loop = () => {
@@ -409,5 +600,4 @@ document.addEventListener('keyup', (e) => {
 // =================
 
 init_gl();
-rafId = requestAnimationFrame(draw);
-requestIdleCallback(idle, { timeout: 3000 });
+rafId = requestAnimationFrame(draw);;;
