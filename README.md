@@ -1,4 +1,8 @@
 
+# The City Without That Number
+
+![4-tile city logo](dev_screenshots/day13_logo.png)
+
 # Resources
 
 ## Programming Articles
@@ -103,3 +107,31 @@ No progress. Got more sleep and wound up with a headache _all day_ as a result o
 
 ## Day 13: 2024-08-25
 
+Got a bunch of things done now that I got more sleep (no thanks for going to bed nearly 3:30am.)
+
+* Added building construction!
+  * No longer is it faked in the vertex shader!
+* Added random construction
+  * Every frame, has an "equal" chance to pick any tile and build a random building type on it.
+    * Technically tiles that come first have higher chance, since only one tile may be picked, otherwise the game rules get nasty to implement.
+  * Used this construction process to create a project logo:
+
+    ![alt text](dev_screenshots/day13_logo.png)
+* Added a subtle lighting system
+  * Tall buildings block some light on the ground around their base
+
+    ![Lighting-ish](dev_screenshots/day13_growth.png)
+* Added height limits
+  * Why? THE VOID.
+
+    ![Buildings are far too tall, block all light](dev_screenshots/day13_void.png)
+* Added building types
+  * So far just commercial, residential, and ERROR. We'll see how far we get with those.
+
+    ![Buildings in red and blue](dev_screenshots/day13_types.png)
+    * ERROR (not shown) has already helped me understand and fix three bugs!
+
+
+Had to spend nearly half an hour sorting out why side-length 7 and 13 maps would have the wrong shape. Appears to be some kind of driver-level compiler bug around floating-point modulo division. Fixed by adding an epsilon to the float-converted instance ID before taking the modulo.
+
+I had meant to do user interaction, but giving some feedback for that interaction came first. Also gave a brief try to making music and found I've forgotten a lot of what I once knew. Ah well! I'm sure I'll make something not too grating.
