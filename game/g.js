@@ -18,6 +18,12 @@ const NEAR = 0.6;
 const FAR = 100.;
 const USED_KEYS = new Set(['w', 'a', 's', 'd', 'arrowup', 'arrowleft', 'arrowdown', 'arrowright', 'shift']);
 
+const BULLDOZE_SND = [,1,,,.3,.4,4,,,,,,,,,.4,,.3,.2];
+const BUILD_SND = [,,,,,,4,,,,,,,,,.6];
+const SELECT_SND = [,,200,,.07,,1,,,,-100,.04];
+const SELECT_SND2 = [,,400];
+const COMMERICAL_DOOR = [.5,0,800,,.7,,1,,,,-120,.4,,,,,.8];
+
 
 // ====================
 // ==== MODEL CODE ====

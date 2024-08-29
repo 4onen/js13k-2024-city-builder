@@ -135,3 +135,17 @@ Got a bunch of things done now that I got more sleep (no thanks for going to bed
 Had to spend nearly half an hour sorting out why side-length 7 and 13 maps would have the wrong shape. Appears to be some kind of driver-level compiler bug around floating-point modulo division. Fixed by adding an epsilon to the float-converted instance ID before taking the modulo.
 
 I had meant to do user interaction, but giving some feedback for that interaction came first. Also gave a brief try to making music and found I've forgotten a lot of what I once knew. Ah well! I'm sure I'll make something not too grating.
+
+## Day 14: 2024-08-26
+
+No progress. Made the mistake of chatting with online acquaintances on Discord.
+
+## Day 15: 2024-08-27
+
+No progress. Prioritized getting to bed before 1am by doing my unrelated fanfic writing at a reasonable hour.
+
+## Day 16: 2024-08-28
+
+Tried my hand at making something of a song in the ZzFXM tracker. Not a truly terrible track, but not enough to put into the game. I did discover a few sounds suitable for sound effects, though, so those have been checked into the repository.
+
+## Day 17: 2024-08-29
