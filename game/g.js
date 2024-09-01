@@ -18,11 +18,11 @@ const NEAR = 0.6;
 const FAR = 100.;
 const USED_KEYS = new Set(['w', 'a', 's', 'd', 'arrowup', 'arrowleft', 'arrowdown', 'arrowright', 'shift']);
 
-const BULLDOZE_SND = [,1,,,.3,.4,4,,,,,,,,,.4,,.3,.2];
-const BUILD_SND = [,,,,,,4,,,,,,,,,.6];
-const SELECT_SND = [,,200,,.07,,1,,,,-100,.04];
-const SELECT_SND2 = [,,400];
-const COMMERICAL_DOOR = [.5,0,800,,.7,,1,,,,-120,.4,,,,,.8];
+const BULLDOZE_SND = [, 1, , , .3, .4, 4, , , , , , , , , .4, , .3, .2];
+const BUILD_SND = [, , , , , , 4, , , , , , , , , .6];
+const SELECT_SND = [, , 200, , .07, , 1, , , , -100, .04];
+const SELECT_SND2 = [, , 400];
+const COMMERICAL_DOOR = [.5, 0, 800, , .7, , 1, , , , -120, .4, , , , , .8];
 
 
 // ====================
@@ -110,7 +110,7 @@ ttyp=int(ttype);
 gl_Position=v2c*w2v*vec4(wp*vec3(1.,development*.5,1.)+vec3(woff.x,0.0,woff.y),1.);
 }`,
   //DEBUG renderer
-  // FS: `#version 300 es\nprecision mediump float;precision mediump int;in vec3 wp;in vec3 mp;flat in float development;flat in int tid;flat in int ttyp;layout(location=0) out vec4 outColor;layout(location=1) out int outTid;void main() {float iid=float(tid);outColor=vec4(mod(iid,7.)/7.,mod(iid,13.)/13.,0.,1.0);}`,
+  //FS: `#version 300 es\nprecision mediump float;precision mediump int;in vec3 wp;in vec3 mp;flat in float development;flat in int tid;flat in int ttyp;layout(location=0) out vec4 outColor;layout(location=1) out int outTid;void main(){float iid=float(tid);outColor=vec4(mod(iid,7.)/7.,mod(iid,13.)/13.,0.,1.0);}`,
   FS: `#version 300 es
   precision mediump float;
   precision mediump int;
@@ -121,6 +121,7 @@ gl_Position=v2c*w2v*vec4(wp*vec3(1.,development*.5,1.)+vec3(woff.x,0.0,woff.y),1
   flat in int ttyp;
   layout(location=0) out vec4 outColor;
   layout(location=1) out int outTid;
+  uniform int selected_bldg;
   float random(vec2 st){return fract(sin(dot(st.xy,vec2(12.9898,78.233)))*43758.5453123);}
   vec3 primcol() {
     switch(abs(ttyp)) {
@@ -163,10 +164,22 @@ gl_Position=v2c*w2v*vec4(wp*vec3(1.,development*.5,1.)+vec3(woff.x,0.0,woff.y),1
   float pathd=step(.4,sd-0.2*n*(1.-0.90*smoothstep(0.0,0.5,development)));
   vec3 grasscol=vec3(pathd,1.-.2*n,pathd);
   col=mix(grasscol,col,smoothstep(0.01,0.05,storey-0.07*n));
+  // selection
+  col=mix(col,vec3(1.),selected_bldg==tid?.5:0.);
   // ret
   outColor=vec4(col*(1.-.1*(development/(1.+4.*my))), 1);
   outTid=tid;
-}`
+}`,
+  pickFS: `#version 300 es
+  precision mediump float;
+  precision mediump int;
+  in vec3 wp;
+  in vec3 mp;
+  flat in float development;
+  flat in int tid;
+  flat in int ttyp;
+  out int outTid;
+  void main(){outTid=tid;}`
 };
 
 // =======================
@@ -198,6 +211,10 @@ let rafId;
  */
 let tile_prog;
 /**
+ * @type {MyWebGLProgram?}
+ */
+let pick_prog;
+/**
  * @type {WebGLBuffer?}
  */
 let tile_pos_buf, tile_idx_buf, tile_info_buf;
@@ -205,6 +222,8 @@ let tile_pos_buf, tile_idx_buf, tile_info_buf;
  * @type {WebGLVertexArrayObject?}
  */
 let tile_vao;
+let fb;
+let instance_tex, instance_depth;
 
 /**
  * @type {Set<string>} The set of currently pressed keys
@@ -224,6 +243,9 @@ const ui = {
   cam_x: 0,
   cam_y: 0,
   gtime: 0,
+  mouseX: 0,
+  mouseY: 0,
+  selected_bldg: -1,
 };
 
 // City states should change only on sim steps. Exceptions:
@@ -324,15 +346,24 @@ const glProgFromSrc = (vs, fs, uniform_names) => {
   return { p, unifs };
 };
 
-const resize_canvas_to_display = () => {
+/**
+ * @param {bool?} force_resize
+ */
+const resize_canvas_to_display = (force_resize) => {
   const w = gl.canvas.clientWidth;
   const h = gl.canvas.clientHeight;
-  const need_resize = w !== gl.canvas.width || h !== gl.canvas.height;
+  const need_resize = force_resize || w !== gl.canvas.width || h !== gl.canvas.height;
   if (need_resize) {
     gl.canvas.width = w;
     gl.canvas.height = h;
   }
   gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
+  if (need_resize) {
+    gl.bindTexture(gl.TEXTURE_2D, instance_tex);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.R32I, w, h, 0, gl.RED_INTEGER, gl.INT, null);
+    gl.bindRenderbuffer(gl.RENDERBUFFER, instance_depth);
+    gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, w, h);
+  }
 };
 
 /**
@@ -341,11 +372,12 @@ const resize_canvas_to_display = () => {
  * @returns {void}
  */
 const init_gl = () => {
-  gl = CV.getContext('webgl2', { alpha: false });
+  gl = CV.getContext('webgl2');
   gl.cullFace(gl.BACK);
   gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
-  tile_prog = glProgFromSrc(TILE.VS, TILE.FS, ["woff", "w2v", "v2c", "sidel"]);
-  gl.useProgram(tile_prog.p);
+  const u = ["woff", "w2v", "v2c", "sidel", "selected_bldg"];
+  tile_prog = glProgFromSrc(TILE.VS, TILE.FS, u);
+  pick_prog = glProgFromSrc(TILE.VS, TILE.pickFS, u);
   gl.clearColor(.1, .1, .1, 1);
   gl.enable(gl.DEPTH_TEST);
   tile_vao = gl.createVertexArray();
@@ -372,26 +404,22 @@ const init_gl = () => {
     TILE.IDX,
     gl.STATIC_DRAW,
   );
+
+  gl.bindTexture(gl.TEXTURE_2D, instance_tex = gl.createTexture());
+  gl.bindRenderbuffer(gl.RENDERBUFFER, instance_depth = gl.createRenderbuffer());
+  gl.bindFramebuffer(gl.FRAMEBUFFER, fb = gl.createFramebuffer());
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, instance_tex, 0);
+  gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, instance_depth);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 };
 
-// Is it bad practice to treat a module like a big singleton? Probably.
-// But since when has bad practice stopped me?
-
-
-const draw = (t) => {
-  ui.gtime += frametime(t);
-  resize_canvas_to_display();
-  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
-  // Draw tiles
-  gl.useProgram(tile_prog.p);
-  gl.bindVertexArray(tile_vao);
-  gl.bindBuffer(gl.ARRAY_BUFFER, tile_info_buf);
-  gl.bufferData(gl.ARRAY_BUFFER, city.info, gl.STATIC_DRAW);
-  gl.uniform1i(tile_prog.unifs.sidel, map.sidel);
-  gl.uniform2f(tile_prog.unifs.woff, ui.cam_x, ui.cam_y);
+const set_unifs = (t, p) => {
+  gl.useProgram(p.p);
+  gl.uniform1i(p.unifs.sidel, map.sidel);
+  gl.uniform1i(p.unifs.selected_bldg, ui.selected_bldg);
+  gl.uniform2f(p.unifs.woff, ui.cam_x, ui.cam_y);
   const s = Math.SQRT1_2;
-  gl.uniformMatrix4fv(tile_prog.unifs.w2v, true, [
+  gl.uniformMatrix4fv(p.unifs.w2v, true, [
     s, 0, -s, 0, //x
     -.5, s, -.5, 0, // y
     .5, s, .5, -4.6,//z
@@ -400,13 +428,41 @@ const draw = (t) => {
   const aspect = gl.canvas.clientWidth / gl.canvas.clientHeight;
   const f = Math.tan(Math.PI * .5 * (1 - ui.fov / 180));
   const range_recip = 1.0 / (NEAR - FAR);
-  gl.uniformMatrix4fv(tile_prog.unifs.v2c, true, [
+  gl.uniformMatrix4fv(p.unifs.v2c, true, [
     f / aspect, 0, 0, 0,
     0, f, 0, 0,
     0, 0, (NEAR + FAR) * range_recip, -1,
     0, 0, NEAR * FAR * range_recip * 2, 0,
   ]);
+};
+
+const draw = (t) => {
+  ui.gtime += frametime(t);
+  resize_canvas_to_display();
+  gl.bindVertexArray(tile_vao);
+  gl.bindBuffer(gl.ARRAY_BUFFER, tile_info_buf);
+  gl.bufferData(gl.ARRAY_BUFFER, city.info, gl.STATIC_DRAW);
+
+  gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+  gl.clearBufferiv(gl.COLOR, 0, new Int32Array([-1, -1, -1, -1]));
+  gl.clear(gl.DEPTH_BUFFER_BIT);
+  set_unifs(t, pick_prog);
   gl.drawElementsInstanced(gl.TRIANGLES, TILE.NTRI * 3, gl.UNSIGNED_BYTE, 0, map.sidel * map.sidel);
+
+  const cfmt = gl.getParameter(gl.IMPLEMENTATION_COLOR_READ_FORMAT);
+  const ctyp = gl.getParameter(gl.IMPLEMENTATION_COLOR_READ_TYPE);
+  console.log(cfmt, ctyp, gl.RGBA_INTEGER, gl.INT);
+  const d = new Int32Array([-1, -1, -1, -1]);
+  gl.readPixels(
+    ui.mouseX, ui.mouseY, 1, 1, gl.RGBA_INTEGER, gl.INT, d
+  );
+  ui.selected_bldg = d[0];
+
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  set_unifs(t, tile_prog);
+  gl.drawElementsInstanced(gl.TRIANGLES, TILE.NTRI * 3, gl.UNSIGNED_BYTE, 0, map.sidel * map.sidel);
+  gl.flush();
   rafId = requestAnimationFrame(draw);
   setTimeout(system_loop);
 };
@@ -599,6 +655,11 @@ document.addEventListener('keydown', (e) => {
 });
 document.addEventListener('keyup', (e) => {
   keys.delete(e.key.toLowerCase());
+});
+CV.addEventListener("mousemove", (e) => {
+  const r = CV.getBoundingClientRect();
+  ui.mouseX = (e.clientX - r.left) * gl.canvas.width / r.width;
+  ui.mouseY = gl.canvas.height * (1 - (e.clientY - r.top) / r.height) - 1;
 });
 
 // =================
