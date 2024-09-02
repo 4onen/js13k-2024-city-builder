@@ -16,10 +16,11 @@ const FRAMES_FPS_SMOOTHING = 5;
 const FPS_UPDATE_INTERVAL = 0.25;
 const NEAR = 0.6;
 const FAR = 100.;
-const USED_KEYS = new Set(['w', 'a', 's', 'd', 'arrowup', 'arrowleft', 'arrowdown', 'arrowright', 'shift']);
+const USED_KEYS = new Set(['w', 'a', 's', 'd', 'arrowup', 'arrowleft', 'arrowdown', 'arrowright', 'shift', '1', '2', 'e', 'esc']);
 
 const BULLDOZE_SND = [, 1, , , .3, .4, 4, , , , , , , , , .4, , .3, .2];
 const BUILD_SND = [, , , , , , 4, , , , , , , , , .6];
+const MO_SND = [.4, 0, 200, , , .04, 1, , , , 100, .04, , , , , , , .05];
 const SELECT_SND = [, , 200, , .07, , 1, , , , -100, .04];
 const SELECT_SND2 = [, , 400];
 const COMMERICAL_DOOR = [.5, 0, 800, , .7, , 1, , , , -120, .4, , , , , .8];
@@ -75,13 +76,11 @@ const TILE = {
 precision mediump float;
 precision mediump int;
 layout(location=0) in vec3 pos;
-layout(location=1) in float devel;
-layout(location=2) in float ttype;
+layout(location=1) in vec3 i;
 // World position
 out vec3 wp;
 // Model position
 out vec3 mp;
-// Tile ID
 flat out float development;
 flat out int tid;
 flat out int ttyp;
@@ -93,21 +92,26 @@ uniform vec2 woff;
 uniform mat4 w2v;
 // View to clip
 uniform mat4 v2c;
+uniform int selected_bldg;
+uniform vec3 selcol;
 float random(vec2 st){return fract(sin(dot(st.xy,vec2(12.9898,78.233)))*43758.5453123);}
 void main() {
 mp=pos;
 tid=gl_InstanceID;
 float iid=float(gl_InstanceID);
 float sidelf=float(sidel);
-float dbl = ttype < 0. ? 2. : 1.;
+float vis = step(0.5,i.z);
+vec2 dbl = vec2(mod(i.z,2.)+1.,i.z);
+dbl.y = 1.;//TODO: Fixme
+vec2 dblp = (mp.xz-.5)*dbl+1.;
 const float eps = .0002;
-wp=vec3(mp.x*dbl-dbl/2.+1.,mp.y+dbl*eps,mp.z);
+wp=vec3(dblp.x,mp.y,dblp.y)*step(-0.5,i.z);
 wp.x-=mod(iid+eps,sidelf);
 wp.y*=1.+.1*random(wp.xz);
 wp.z-=floor((iid+eps)/sidelf);
-development=devel;
-ttyp=int(ttype);
-gl_Position=v2c*w2v*vec4(wp*vec3(1.,development*.5,1.)+vec3(woff.x,0.0,woff.y),1.);
+development=i.x+float(selcol==vec3(0.,1.,0.));
+ttyp=int(i.y);
+gl_Position=v2c*w2v*vec4(wp*vec3(1.,i.x*.5,1.)+vec3(woff.x,0.0,woff.y),1.);
 }`,
   //DEBUG renderer
   //FS: `#version 300 es\nprecision mediump float;precision mediump int;in vec3 wp;in vec3 mp;flat in float development;flat in int tid;flat in int ttyp;layout(location=0) out vec4 outColor;layout(location=1) out int outTid;void main(){float iid=float(tid);outColor=vec4(mod(iid,7.)/7.,mod(iid,13.)/13.,0.,1.0);}`,
@@ -122,26 +126,26 @@ gl_Position=v2c*w2v*vec4(wp*vec3(1.,development*.5,1.)+vec3(woff.x,0.0,woff.y),1
   layout(location=0) out vec4 outColor;
   layout(location=1) out int outTid;
   uniform int selected_bldg;
+  uniform vec3 selcol;
   float random(vec2 st){return fract(sin(dot(st.xy,vec2(12.9898,78.233)))*43758.5453123);}
-  vec3 primcol() {
-    switch(abs(ttyp)) {
-      case 1: return vec3(1.,.8,.8);
-      case 2: return vec3(.8,.8,1.);
-      default: return vec3(1.,.5,1.);
+  vec3 primcol(){
+    switch(ttyp){
+      case 1:return vec3(1.,.8,.8);
+      case 2:return vec3(.8,.8,1.);
+      default:return vec3(1.,.5,1.);
     }
   }
-  vec3 seccol() {
-    switch (abs(ttyp)) {
-      case 1: return vec3(.6,.4,.4);
-      case 2: return vec3(.4,.4,.6);
-      default: return vec3(1.,.0,.8);
+  vec3 seccol(){
+    switch(ttyp){
+      case 1:return vec3(.6,.4,.4);
+      case 2:return vec3(.4,.4,.6);
+      default:return vec3(1.,.0,.8);
     }
   }
   void main() {
-  // TODO: make random (subject to uniform pallette)
+  // TODO:make random (subject to uniform pallette)
   vec3 primary_col=primcol();
   vec3 secondary_col=seccol();
-  
   float my=mp.y;
   float wy=wp.y;
   float storey=my*development;
@@ -165,13 +169,13 @@ gl_Position=v2c*w2v*vec4(wp*vec3(1.,development*.5,1.)+vec3(woff.x,0.0,woff.y),1
   vec3 grasscol=vec3(pathd,1.-.2*n,pathd);
   col=mix(grasscol,col,smoothstep(0.01,0.05,storey-0.07*n));
   // selection
-  col=mix(col,vec3(1.),selected_bldg==tid?.5:0.);
+  col=mix(col,selcol,selected_bldg==tid?.5:0.);
   // ret
   outColor=vec4(col*(1.-.1*(development/(1.+4.*my))), 1);
   outTid=tid;
 }`,
   pickFS: `#version 300 es
-  precision mediump float;
+  precision lowp float;
   precision mediump int;
   in vec3 wp;
   in vec3 mp;
@@ -187,6 +191,9 @@ gl_Position=v2c*w2v*vec4(wp*vec3(1.,development*.5,1.)+vec3(woff.x,0.0,woff.y),1
 // =======================
 
 const CV = document.querySelector('canvas');
+const PBTN = document.getElementById("playdialog");
+const CD = document.getElementById('cd');
+const SND_EL = document.getElementById('snd');
 const FPS_EL = document.getElementById('fps');
 
 // ===================
@@ -245,6 +252,7 @@ const ui = {
   gtime: 0,
   mouseX: 0,
   mouseY: 0,
+  tool: 0,
   selected_bldg: -1,
 };
 
@@ -253,7 +261,7 @@ const ui = {
 // * People states (if I get to them) change on frame, to let the GPU do paths.
 const city = {
   // Info: "devel" and "typ" floats, packed
-  info: new Float32Array(2. * map.sidel * map.sidel).fill(0.),
+  info: new Float32Array(3. * map.sidel * map.sidel).fill(0.),
   stats: { typs: [] },
 };
 
@@ -310,6 +318,10 @@ const kd = (...args) => {
     if (keys.has(a))
       return true;
   return false;
+};
+
+const s = (args) => {
+  if (SND_EL.checked) zzfx(...args);
 };
 
 /**
@@ -375,7 +387,7 @@ const init_gl = () => {
   gl = CV.getContext('webgl2');
   gl.cullFace(gl.BACK);
   gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
-  const u = ["woff", "w2v", "v2c", "sidel", "selected_bldg"];
+  const u = ["woff", "w2v", "v2c", "sidel", "selected_bldg", "selcol"];
   tile_prog = glProgFromSrc(TILE.VS, TILE.FS, u);
   pick_prog = glProgFromSrc(TILE.VS, TILE.pickFS, u);
   gl.clearColor(.1, .1, .1, 1);
@@ -390,12 +402,9 @@ const init_gl = () => {
   tile_info_buf = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, tile_info_buf);
   gl.bufferData(gl.ARRAY_BUFFER, city.info, gl.STATIC_DRAW);
-  gl.vertexAttribPointer(1, 1, gl.FLOAT, false, 8, 0);
-  gl.vertexAttribPointer(2, 1, gl.FLOAT, false, 8, 4);
+  gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 12, 0);
   gl.vertexAttribDivisor(1, 1);
-  gl.vertexAttribDivisor(2, 1);
   gl.enableVertexAttribArray(1);
-  gl.enableVertexAttribArray(2);
 
   tile_idx_buf = gl.createBuffer();
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, tile_idx_buf);
@@ -417,6 +426,7 @@ const set_unifs = (t, p) => {
   gl.useProgram(p.p);
   gl.uniform1i(p.unifs.sidel, map.sidel);
   gl.uniform1i(p.unifs.selected_bldg, ui.selected_bldg);
+  gl.uniform3fv(p.unifs.tool, [[1., 0., 0.], [0., 0., 1.]][Math.min(1, ui.tool)]);
   gl.uniform2f(p.unifs.woff, ui.cam_x, ui.cam_y);
   const s = Math.SQRT1_2;
   gl.uniformMatrix4fv(p.unifs.w2v, true, [
@@ -449,9 +459,6 @@ const draw = (t) => {
   set_unifs(t, pick_prog);
   gl.drawElementsInstanced(gl.TRIANGLES, TILE.NTRI * 3, gl.UNSIGNED_BYTE, 0, map.sidel * map.sidel);
 
-  const cfmt = gl.getParameter(gl.IMPLEMENTATION_COLOR_READ_FORMAT);
-  const ctyp = gl.getParameter(gl.IMPLEMENTATION_COLOR_READ_TYPE);
-  console.log(cfmt, ctyp, gl.RGBA_INTEGER, gl.INT);
   const d = new Int32Array([-1, -1, -1, -1]);
   gl.readPixels(
     ui.mouseX, ui.mouseY, 1, 1, gl.RGBA_INTEGER, gl.INT, d
@@ -480,16 +487,17 @@ const recalc_city_stats = () => {
     Object.assign({}, t),
   ];
   for (let i = 0; i < map.sidel * map.sidel; i += 1) {
-    const typ = city.info[2 * i + 1];
-    t.buildings += (typ !== 0) + (typ < 0);
-    t.stories += Math.ceil(city.info[2 * i]) * (1 + (typ < 0));
-    t.single += typ > 0;
-    t.double += typ < 0;
-    const t2 = typs[Math.abs(typ)];
-    t2.buildings += 1 + (typ < 0);
-    t2.stories += Math.ceil(city.info[2 * i]) * (1 + (typ < 0));
-    t2.single += typ > 0;
-    t2.double += typ < 0;
+    const typ = city.info[3 * i + 1];
+    const vis = city.info[3 * i + 2];
+    t.buildings += (typ > 0) + (vis > 0);
+    t.stories += Math.ceil(city.info[3 * i]) * (1 + (vis > 0));
+    t.single += typ > 0 && vis == 0;
+    t.double += typ > 0 && vis > 0;
+    const t2 = typs[typ];
+    t2.buildings += (typ > 0) + (vis > 0);
+    t2.stories += Math.ceil(city.info[3 * i]) * (1 + (vis > 0));
+    t2.single += typ > 0 && vis == 0;
+    t2.double += typ > 0 && vis > 0;
   }
   t.typs = typs;
   city.stats = t;
@@ -504,14 +512,15 @@ const can_see = (n) => n != N && n != N * N && n != N * N * N && n != N * N * N 
  * @returns {bool}
  */
 const can_place_single_story = (idx, typ) => {
-  let height = city.info[2 * idx];
+  let height = city.info[3 * idx];
   let building = height != Math.ceil(height);
   return (
     height < 4 - typ
     && !building
     && can_see(city.stats.stories + 1)
-    && can_see(city.stats.typs[Math.abs(typ)].stories + 1)
-    && city.info[2 * idx + 1] >= 0
+    && can_see(city.stats.typs[typ].stories + 1)
+    && city.info[3 * idx + 1] >= 0
+    && city.info[3 * idx + 2] == 0
   );
 };
 
@@ -527,7 +536,7 @@ const can_place_single = (idx, typ) => {
     && can_see(city.stats.single + 1)
     && can_see(city.stats.typs[typ].buildings + 1)
     && can_see(city.stats.typs[typ].single + 1)
-    && city.info[2 * idx + 1] == 0
+    && city.info[3 * idx + 1] == 0
   );
 };
 
@@ -537,15 +546,15 @@ const can_place_single = (idx, typ) => {
  * @returns {bool}
  */
 const can_place_double_story = (idx, typ) => {
-  let height = city.info[2 * idx];
+  let height = city.info[3 * idx];
   let building = height != Math.ceil(height);
   return (
     height < 6 - 2 * typ
     && !building
     && can_see(city.stats.stories + 2)
     && can_see(city.stats.typs[typ].stories + 2)
-    && city.info[2 * idx + 2] == 0
-    && city.info[2 * idx + 1] <= 0
+    && city.info[3 * idx + 4] == 0
+    && city.info[3 * idx + 2] >= 0
   );
 };
 
@@ -562,9 +571,54 @@ const can_place_double = (idx, typ) => {
     && can_see(city.stats.buildings + 2)
     && idx < (map.sidel * map.sidel - 1)
     && (idx + 1) % map.sidel > 0
-    && city.info[2 * idx + 1] == 0
+    && city.info[3 * idx + 1] == 0
   );
 };
+
+/**
+ * @param {number} typ 
+ * @returns {bool}
+ */
+const can_place_story = (idx) => {
+  const vis = city.info[3 * idx + 2];
+  if (vis == 0) return can_place_single_story(idx, typ);
+  if (vis > 0) return can_place_double_story(idx, typ);
+  return false;
+};
+
+/**
+ * @param {number} typ 
+ * @returns {bool}
+ */
+const can_delete_double = (idx) => {
+  const typ = city.info[3 * idx + 1];
+  const height = Math.ceil(city.info[3 * idx]);
+  return (
+    can_see(city.stats.stories - 2 * height)
+    && can_see(city.stats.buildings - 2)
+    && can_see(city.stats.typs[typ].stories - 2 * height)
+    && can_see(city.stats.typs[typ].buildings - 2)
+    && can_see(city.stats.typs[typ].double - 1)
+  );
+};
+
+/**
+ * @param {number} typ 
+ * @returns {bool}
+ */
+const can_delete_single = (idx) => {
+  const typ = city.info[3 * idx + 1];
+  const height = Math.ceil(city.info[3 * idx]);
+  return (
+    can_see(city.stats.stories - height)
+    && can_see(city.stats.buildings - 1)
+    && can_see(city.stats.typs[typ].stories - height)
+    && can_see(city.stats.typs[typ].buildings - 1)
+    && can_see(city.stats.typs[typ].single - 1)
+  );
+};
+
+const can_delete = (idx) => can_delete_double(idx) || can_delete_single(idx);
 
 /**
  * @param {float} dt 
@@ -574,33 +628,35 @@ const game_frame = (dt) => {
   const maxidx = map.sidel * map.sidel;
   let have_built = false;
   for (let i = 0; i < maxidx; i += 1) {
-    if (i > 0 && city.info[2 * i - 1] < 0) continue;
+    if (city.info[3 * i + 2] < 0) continue;
     const build = !have_built && Math.random() < 0.1 / maxidx;
-    const is_new = city.info[2 * i + 1] !== 0;
-    const abstyp = 1 + (Math.random() > 0.5);
+    const is_new = city.info[3 * i + 1] !== 0;
+    const typ = 1 + (Math.random() > 0.5);
     if (build) {
-      if (can_place_double(i, abstyp)) {
-        city.info[2 * i + 1] = -abstyp;
-        city.info[2 * i] += .05;
+      if (can_place_double(i, typ)) {
+        city.info[3 * i + 5] = -1.;
+        city.info[3 * i + 2] = 1.;
+        city.info[3 * i + 1] = typ;
+        city.info[3 * i] += .05;
         have_built = true;
-      } else if (can_place_single(i, abstyp)) {
-        city.info[2 * i + 1] = abstyp;
-        city.info[2 * i] += .05;
+      } else if (can_place_single(i, typ)) {
+        city.info[3 * i + 1] = typ;
+        city.info[3 * i] += .05;
         have_built = true;
       } else {
-        const abstyp = Math.abs(city.info[2 * i + 1]);
+        const abstyp = Math.abs(city.info[3 * i + 1]);
         if (abstyp > 0) {
           if (can_place_double_story(i, abstyp)) {
-            city.info[2 * i] += .05;
+            city.info[3 * i] += .05;
             have_built = true;
           } else if (can_place_single_story(i, abstyp)) {
-            city.info[2 * i] += .05;
+            city.info[3 * i] += .05;
             have_built = true;
           }
         }
       }
     }
-    city.info[2 * i] = Math.min(Math.ceil(city.info[2 * i]), city.info[2 * i] + dt);
+    city.info[3 * i] = Math.min(Math.ceil(city.info[3 * i]), city.info[3 * i] + dt * 2.);
   }
 };
 
@@ -633,6 +689,18 @@ const system_frame = (dt) => {
   game_frame(dt);
 };
 
+const keydown = () => {
+  if (kd('esc')) {
+    ui.tool = 0;
+  }
+  if (kd('1')) {
+    ui.tool = 1;
+  }
+  if (kd('2')) {
+    ui.tool = 2;
+  }
+};
+
 const system_loop = () => {
   while (ui.gtime > 0) {
     system_frame(SYS_DT);
@@ -644,27 +712,44 @@ const system_loop = () => {
 // ==== EVENT REGISTRATION ====
 // ============================
 
-window.addEventListener('webglcontextlost', (e) => {
+const ael = (e, t, f) => e.addEventListener(t, f);
+
+ael(window, 'webglcontextlost', (e) => {
   console.warn('WebGL context lost', e);
   cancelAnimationFrame(requestAnimationFrameId);
 });
-document.addEventListener('keydown', (e) => {
+ael(document, 'keydown', (e) => {
   const k = e.key.toLowerCase();
   if (!USED_KEYS.has(k)) return;
   keys.add(k);
+  keydown();
 });
-document.addEventListener('keyup', (e) => {
+ael(document, 'keyup', (e) => {
   keys.delete(e.key.toLowerCase());
 });
-CV.addEventListener("mousemove", (e) => {
+ael(CV, "mousemove", (e) => {
+  if (!gl) return;
   const r = CV.getBoundingClientRect();
   ui.mouseX = (e.clientX - r.left) * gl.canvas.width / r.width;
   ui.mouseY = gl.canvas.height * (1 - (e.clientY - r.top) / r.height) - 1;
 });
+ael(CV, "mousedown", (e) => {
+  e.preventDefault();
+  console.log(ui.selected_bldg);
+});
+ael(CV, "touchdown", (e) => {
+  e.preventDefault();
+});
+ael(SND_EL, "change", () => s(SELECT_SND2));
+ael(SND_EL, 'mouseenter', () => s(MO_SND));
+ael(PBTN, 'mouseenter', () => s(MO_SND));
+ael(PBTN, 'mousedown', () => s(SELECT_SND2));
 
 // =================
 // ==== RUNTIME ====
 // =================
 
-init_gl();
-rafId = requestAnimationFrame(draw);;;
+PBTN.addEventListener('close', (e) => {
+  init_gl();
+  rafId = requestAnimationFrame(draw);
+});
