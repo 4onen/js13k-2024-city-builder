@@ -149,3 +149,25 @@ No progress. Prioritized getting to bed before 1am by doing my unrelated fanfic 
 Tried my hand at making something of a song in the ZzFXM tracker. Not a truly terrible track, but not enough to put into the game. I did discover a few sounds suitable for sound effects, though, so those have been checked into the repository.
 
 ## Day 17: 2024-08-29
+
+No progress. Big work presentation led to me kinda shutting down once I was home.
+
+## Day 18: 2024-08-30
+
+No progress. LeetCode Daily was annoyingly difficult and the daily for the next day was bugged. I didn't feel like doing more coding after dealing with that.
+
+## Day 19: 2024-08-31
+
+No progress. Hike with friends.
+
+## Day 20: 2024-09-01
+
+Added hover, sound, and mute button. (Still no placement.)
+
+![Cityscape showing hover, cleaner FPS counter, mute button](dev_screenshots/day20_hover_sound.webp)
+
+Also went through this nightmare shader space so that I can (in the future) support double buildings slotted in more than a single direction.
+
+![Blank void with only a few building walls floating in the darkness](dev_screenshots/day20_nightmare_space.png)
+
+Turning this into a real game, almost!
