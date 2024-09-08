@@ -447,7 +447,7 @@ const set_unifs = (t, p) => {
 };
 
 const draw = (t) => {
-  ui.gtime += frametime(t);
+  ui.gtime = Math.min(.1, ui.gtime + frametime(t));
   resize_canvas_to_display();
   gl.bindVertexArray(tile_vao);
   gl.bindBuffer(gl.ARRAY_BUFFER, tile_info_buf);
