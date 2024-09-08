@@ -19,7 +19,6 @@ const FAR = 100.;
 const USED_KEYS = new Set(['w', 'a', 's', 'd', 'arrowup', 'arrowleft', 'arrowdown', 'arrowright', 'shift', '1', '2', 'e', 'escape', 'p']);
 
 const BULLDOZE_SND = [, 1, , , .3, .4, 4, , , , , , , , , .4, , .3, .2];
-const BUILD_SND = [, , , , , , 4, , , , , , , , , .6];
 const MO_SND = [.4, 0, 200, , , .04, 1, , , , 100, .04, , , , , , , .05];
 const SELECT_SND = [, , 200, , .07, , 1, , , , -100, .04];
 const SELECT_SND2 = [, , 400];
