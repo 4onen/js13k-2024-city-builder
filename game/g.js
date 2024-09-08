@@ -169,8 +169,10 @@ vec3 grasscol=vec3(pathd,1.-.2*n,pathd);
 col=mix(grasscol,col,smoothstep(0.01,0.05,storey-0.07*n));
 // selection
 col=mix(col,selcol,selected_bldg==tid?.5:0.);
+// sublight
+col*=1.-.1*(development/(1.+2.*my))*smoothstep(-.5,-.4,-sd-.01*n);
 // ret
-outColor=vec4(col*(1.-.1*(development/(1.+4.*my))), 1);
+outColor=vec4(col,1.);
 outTid=tid;
 }`,
   pickFS: `#version 300 es
@@ -190,7 +192,7 @@ void main(){outTid=tid;}`
 // =======================
 
 const CV = document.querySelector('canvas');
-const PBTN = document.getElementById("playdialog");
+const PBTN = document.getElementById('playdialog');
 const CD = document.getElementById('cd');
 const SND_EL = document.getElementById('snd');
 const FPS_EL = document.getElementById('fps');
