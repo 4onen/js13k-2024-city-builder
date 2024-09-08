@@ -171,3 +171,21 @@ Also went through this nightmare shader space so that I can (in the future) supp
 ![Blank void with only a few building walls floating in the darkness](dev_screenshots/day20_nightmare_space.png)
 
 Turning this into a real game, almost!
+
+## Day 21, 22, 23, 24, 25: 2024-09-02 to 2024-09-06
+
+No progress. Visiting with family friends and failing to fix my sleep schedule.
+
+## Day 26: 2024-09-07
+
+* Adds support for rotated 2x1 and fully 2x2 buildings! Big change, took a while, but it's finally in.
+  ![A cityscape with 1x1, 2x1, 1x2, and 2x2 buildings](dev_screenshots/day26_2x2.png)
+* Added pause keys (<kbd>p</kbd> or <kbd>Escape</kbd>) to allow halting the render loop.
+  * Also caps accumulated "game time" at 0.1 seconds, so that slow devices will lag rather than freeze while trying to "catch up" to however much faster the render loop can run.
+* Added touch controls! Now click still works on mousedown, and touch operates on tap.
+  * Computer users still get nice mouseover hover until they select a building at which point their selection "locks" and they get confirmation.
+  * Mobile users only get locking+confirmation, but at least they can use it at all! Also allows mouse/touch pan on both computer and mobile.
+* Adjusted shader noise fn to work on my Pixel 8 device. Previously I was only testing it on Intel UHD 630 which had no trobule with massive values for `sin`, but mobile was noiseless and I wasn't sure why. After some time, saw a few pixels of noise and figured out it was a sin precision error. Now the pixel noise is all over the ground! Yay pixels!
+
+## Day 27: 2024-09-08
+
