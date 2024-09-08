@@ -116,74 +116,74 @@ gl_Position=v2c*w2v*vec4(wp*vec3(1.,i.x*.5,1.)+vec3(woff.x,0.0,woff.y),1.);
   //DEBUG renderer
   //FS: `#version 300 es\nprecision mediump float;precision mediump int;in vec3 wp;in vec3 mp;flat in float development;flat in int tid;flat in int ttyp;layout(location=0) out vec4 outColor;layout(location=1) out int outTid;void main(){float iid=float(tid);outColor=vec4(mod(iid,7.)/7.,mod(iid,13.)/13.,0.,1.0);}`,
   FS: `#version 300 es
-  precision mediump float;
-  precision mediump int;
-  in vec3 wp;
-  in vec3 mp;
-  flat in float development;
-  flat in int tid;
-  flat in int ttyp;
-  layout(location=0) out vec4 outColor;
-  layout(location=1) out int outTid;
-  uniform int selected_bldg;
-  uniform vec3 selcol;
-  float random(vec2 st){return fract(sin(dot(st.xy,vec2(12.9898,78.233)))*43758.5453123);}
-  vec3 primcol(){
-    switch(ttyp){
-      case 1:return vec3(1.,.8,.8);
-      case 2:return vec3(.8,.8,1.);
-      default:return vec3(1.,.5,1.);
-    }
+precision mediump float;
+precision mediump int;
+in vec3 wp;
+in vec3 mp;
+flat in float development;
+flat in int tid;
+flat in int ttyp;
+layout(location=0) out vec4 outColor;
+layout(location=1) out int outTid;
+uniform int selected_bldg;
+uniform vec3 selcol;
+float random(vec2 st){return fract(sin(dot(st.xy,vec2(12.9898,78.233)))*43758.5453123);}
+vec3 primcol(){
+  switch(ttyp){
+    case 1:return vec3(1.,.8,.8);
+    case 2:return vec3(.8,.8,1.);
+    default:return vec3(1.,.5,1.);
   }
-  vec3 seccol(){
-    switch(ttyp){
-      case 1:return vec3(.6,.4,.4);
-      case 2:return vec3(.4,.4,.6);
-      default:return vec3(1.,.0,.8);
-    }
+}
+vec3 seccol(){
+  switch(ttyp){
+    case 1:return vec3(.6,.4,.4);
+    case 2:return vec3(.4,.4,.6);
+    default:return vec3(1.,.0,.8);
   }
-  void main() {
-  // TODO:make random (subject to uniform pallette)
-  vec3 primary_col=primcol();
-  vec3 secondary_col=seccol();
-  float my=mp.y;
-  float wy=wp.y;
-  float storey=my*development;
-  // Square dist to tile center
-  float sd=max(abs(mp.x),abs(mp.z));
-  // Dist from middle of each storey
-  float sy=mod(storey,1.)-0.5;
-  vec3 col=primary_col;
-  // Footer, roof, trim all-in-one
-  col=mix(col,secondary_col,step(0.4,abs(sy)));
-  // Doorways/windows
-  float win_grid=step(-0.05,-abs(abs(mp.x)-0.2))+step(-0.05,-abs(abs(mp.z)-0.2));
-  float door_grid=step(-0.06,-min(abs(mp.x),abs(mp.z)));
-  float door_height=step(-0.7,-storey);
-  float win_limits=step(-0.2,-abs(sy));
-  col=mix(col,vec3(0.4,0.6,0.6),win_grid*win_limits);
-  col=mix(col,vec3(0.4),door_grid*door_height);
-  // Grass to path
-  float n=random(floor(25.*wp.xz));
-  float pathd=step(.4,sd-0.2*n*(1.-0.90*smoothstep(0.0,0.5,development)));
-  vec3 grasscol=vec3(pathd,1.-.2*n,pathd);
-  col=mix(grasscol,col,smoothstep(0.01,0.05,storey-0.07*n));
-  // selection
-  col=mix(col,selcol,selected_bldg==tid?.5:0.);
-  // ret
-  outColor=vec4(col*(1.-.1*(development/(1.+4.*my))), 1);
-  outTid=tid;
+}
+void main() {
+// TODO:make random (subject to uniform pallette)
+vec3 primary_col=primcol();
+vec3 secondary_col=seccol();
+float my=mp.y;
+float wy=wp.y;
+float storey=my*development;
+// Square dist to tile center
+float sd=max(abs(mp.x),abs(mp.z));
+// Dist from middle of each storey
+float sy=mod(storey,1.)-0.5;
+vec3 col=primary_col;
+// Footer, roof, trim all-in-one
+col=mix(col,secondary_col,step(0.4,abs(sy)));
+// Doorways/windows
+float win_grid=step(-0.05,-abs(abs(mp.x)-0.2))+step(-0.05,-abs(abs(mp.z)-0.2));
+float door_grid=step(-0.06,-min(abs(mp.x),abs(mp.z)));
+float door_height=step(-0.7,-storey);
+float win_limits=step(-0.2,-abs(sy));
+col=mix(col,vec3(0.4,0.6,0.6),win_grid*win_limits);
+col=mix(col,vec3(0.4),door_grid*door_height);
+// Grass to path
+float n=random(floor(25.*wp.xz));
+float pathd=step(.4,sd-0.2*n*(1.-0.90*smoothstep(0.0,0.5,development)));
+vec3 grasscol=vec3(pathd,1.-.2*n,pathd);
+col=mix(grasscol,col,smoothstep(0.01,0.05,storey-0.07*n));
+// selection
+col=mix(col,selcol,selected_bldg==tid?.5:0.);
+// ret
+outColor=vec4(col*(1.-.1*(development/(1.+4.*my))), 1);
+outTid=tid;
 }`,
   pickFS: `#version 300 es
-  precision lowp float;
-  precision mediump int;
-  in vec3 wp;
-  in vec3 mp;
-  flat in float development;
-  flat in int tid;
-  flat in int ttyp;
-  out int outTid;
-  void main(){outTid=tid;}`
+precision lowp float;
+precision mediump int;
+in vec3 wp;
+in vec3 mp;
+flat in float development;
+flat in int tid;
+flat in int ttyp;
+out int outTid;
+void main(){outTid=tid;}`
 };
 
 // =======================
