@@ -16,7 +16,7 @@ const FRAMES_FPS_SMOOTHING = 5;
 const FPS_UPDATE_INTERVAL = 0.25;
 const NEAR = 0.6;
 const FAR = 100.;
-const USED_KEYS = new Set(['w', 'a', 's', 'd', 'arrowup', 'arrowleft', 'arrowdown', 'arrowright', 'shift', '1', '2', 'e', 'esc']);
+const USED_KEYS = new Set(['w', 'a', 's', 'd', 'arrowup', 'arrowleft', 'arrowdown', 'arrowright', 'shift', '1', '2', 'e', 'escape', 'p']);
 
 const BULLDOZE_SND = [, 1, , , .3, .4, 4, , , , , , , , , .4, , .3, .2];
 const BUILD_SND = [, , , , , , 4, , , , , , , , , .6];
@@ -102,7 +102,7 @@ float iid=float(gl_InstanceID);
 float sidelf=float(sidel);
 float vis = step(0.5,i.z);
 vec2 dbl = vec2(mod(i.z,2.)+1.,i.z);
-dbl.y = 1.;//TODO: Fixme
+dbl.y = 1.+float(i.z-1.>0.);
 vec2 dblp = (mp.xz-.5)*dbl+1.;
 const float eps = .0002;
 wp=vec3(dblp.x,mp.y,dblp.y)*step(-0.5,i.z);
@@ -380,7 +380,7 @@ const resize_canvas_to_display = (force_resize) => {
 
 /**
  * Gets and sets up a WebGL2 rendering context
- * 
+ *
  * @returns {void}
  */
 const init_gl = () => {
@@ -474,12 +474,18 @@ const draw = (t) => {
   setTimeout(system_loop);
 };
 
+/**
+ * Visual tile count
+ * @param {number} vis visual data of the tile
+ * @returns {number} number of tiles occupied
+ */
+const vtc = (v) => Math.ceil(v * v / 4 + 1);
+
 const recalc_city_stats = () => {
   const t = {
     buildings: 0,
     stories: 0,
-    single: 0,
-    double: 0,
+    size: [0, 0, null, 0],
   };
   const typs = [
     Object.assign({}, t),
@@ -488,16 +494,13 @@ const recalc_city_stats = () => {
   ];
   for (let i = 0; i < map.sidel * map.sidel; i += 1) {
     const typ = city.info[3 * i + 1];
-    const vis = city.info[3 * i + 2];
-    t.buildings += (typ > 0) + (vis > 0);
-    t.stories += Math.ceil(city.info[3 * i]) * (1 + (vis > 0));
-    t.single += typ > 0 && vis == 0;
-    t.double += typ > 0 && vis > 0;
-    const t2 = typs[typ];
-    t2.buildings += (typ > 0) + (vis > 0);
-    t2.stories += Math.ceil(city.info[3 * i]) * (1 + (vis > 0));
-    t2.single += typ > 0 && vis == 0;
-    t2.double += typ > 0 && vis > 0;
+    const tiles = vtc(city.info[3 * i + 2]);
+    const height = Math.ceil(city.info[3 * i]);
+    for (const s of [t, typs[typ]]) {
+      s.buildings += (typ > 0) * tiles;
+      s.stories += height * tiles;
+      s.size[tiles] += typ > 0;
+    }
   }
   t.typs = typs;
   city.stats = t;
@@ -507,121 +510,75 @@ const can_see = (n) => n != N && n != N * N && n != N * N * N && n != N * N * N 
 
 
 /**
- * @param {number} idx 
- * @param {number} typ 
  * @returns {bool}
  */
-const can_place_single_story = (idx, typ) => {
+const can_place_story = (idx, vis) => {
   let height = city.info[3 * idx];
+  let typ = city.info[3 * idx + 1];
+  vis = vis || city.info[3 * idx + 2];
   let building = height != Math.ceil(height);
   return (
-    height < 4 - typ
+    height < 4
     && !building
-    && can_see(city.stats.stories + 1)
-    && can_see(city.stats.typs[typ].stories + 1)
-    && city.info[3 * idx + 1] >= 0
-    && city.info[3 * idx + 2] == 0
-  );
-};
-
-/**
- * @param {number} idx
- * @param {number} typ
- * @returns {bool}
- */
-const can_place_single = (idx, typ) => {
-  return (
-    can_place_single_story(idx, typ)
-    && can_see(city.stats.buildings + 1)
-    && can_see(city.stats.single + 1)
-    && can_see(city.stats.typs[typ].buildings + 1)
-    && can_see(city.stats.typs[typ].single + 1)
-    && city.info[3 * idx + 1] == 0
-  );
-};
-
-/**
- * @param {number} idx
- * @param {number} typ
- * @returns {bool}
- */
-const can_place_double_story = (idx, typ) => {
-  let height = city.info[3 * idx];
-  let building = height != Math.ceil(height);
-  return (
-    height < 6 - 2 * typ
-    && !building
-    && can_see(city.stats.stories + 2)
-    && can_see(city.stats.typs[typ].stories + 2)
-    && city.info[3 * idx + 4] == 0
+    && can_see(city.stats.stories + vtc(vis))
+    && can_see(city.stats.typs[typ].stories + vtc(vis))
+    && (!(vis & 1) || city.info[3 * idx + 4] === 0)
+    && (!(vis & 2) || city.info[3 * (idx + map.sidel) + 1] === 0)
+    && (!(vis == 3) || city.info[3 * (idx + map.sidel) + 4] === 0)
     && city.info[3 * idx + 2] >= 0
   );
 };
 
-/**
- * @param {number} idx 
- * @param {number} typ 
- * @returns {bool}
- */
-const can_place_double = (idx, typ) => {
+const can_place = (idx, typ, vis) => {
+  const t = city.stats.typs[typ];
   return (
-    can_place_double_story(idx, typ)
-    && can_see(city.stats.typs[typ].buildings + 2)
-    && can_see(city.stats.typs[typ].double + 1)
-    && can_see(city.stats.buildings + 2)
-    && idx < (map.sidel * map.sidel - 1)
-    && (idx + 1) % map.sidel > 0
-    && city.info[3 * idx + 1] == 0
+    can_place_story(idx, vis)
+    && can_see(city.stats.buildings + vtc(vis))
+    && can_see(city.stats.size[vtc(vis)] + 1)
+    && can_see(t.buildings + vtc(vis))
+    && can_see(t.size[vtc(vis)] + 1)
+    && (!(vis & 1) || (idx + 1) % map.sidel > 0)
+    && (!(vis & 1) || city.info[3 * idx + 5] === 0)
+    && (!(vis & 2) || city.info[3 * (idx + map.sidel) + 2] === 0)
+    && (!(vis == 3) || city.info[3 * (idx + map.sidel) + 5] === 0)
   );
 };
 
 /**
- * @param {number} typ 
- * @returns {bool}
+ * @param {number} i idx
+ * @param {number} typ
+ * @param {number} vis
  */
-const can_place_story = (idx) => {
-  const vis = city.info[3 * idx + 2];
-  if (vis == 0) return can_place_single_story(idx, typ);
-  if (vis > 0) return can_place_double_story(idx, typ);
-  return false;
+const place = (i, typ, vis) => {
+  if (vis & 1) city.info[3 * i + 5] = -1;
+  if (vis & 2) city.info[3 * (i + map.sidel) + 2] = -1;
+  if (vis == 3) city.info[3 * (i + map.sidel) + 5] = -1;
+  city.info[3 * i + 2] = vis;
+  city.info[3 * i + 1] = typ;
+  city.info[3 * i] += .05;
 };
 
+
 /**
- * @param {number} typ 
+ * @param {number} idx
  * @returns {bool}
  */
-const can_delete_double = (idx) => {
+const can_delete = (idx) => {
   const typ = city.info[3 * idx + 1];
   const height = Math.ceil(city.info[3 * idx]);
   return (
-    can_see(city.stats.stories - 2 * height)
-    && can_see(city.stats.buildings - 2)
-    && can_see(city.stats.typs[typ].stories - 2 * height)
-    && can_see(city.stats.typs[typ].buildings - 2)
-    && can_see(city.stats.typs[typ].double - 1)
+    can_see(city.stats.stories - vtc(vis) * height)
+    && can_see(city.stats.buildings - vtc(vis))
+    && can_see(city.stats.typs[typ].stories - vtc(vis) * height)
+    && can_see(city.stats.typs[typ].buildings - vtc(vis))
+    && can_see(city.stats.typs[typ].size[vtc(vis)] - 1)
+    && (!(vis & 1) || (idx + 1) % map.sidel > 0)
+    && (!(vis & 2) || idx < map.sidel * map.sidel - 1)
   );
 };
 
 /**
- * @param {number} typ 
- * @returns {bool}
- */
-const can_delete_single = (idx) => {
-  const typ = city.info[3 * idx + 1];
-  const height = Math.ceil(city.info[3 * idx]);
-  return (
-    can_see(city.stats.stories - height)
-    && can_see(city.stats.buildings - 1)
-    && can_see(city.stats.typs[typ].stories - height)
-    && can_see(city.stats.typs[typ].buildings - 1)
-    && can_see(city.stats.typs[typ].single - 1)
-  );
-};
-
-const can_delete = (idx) => can_delete_double(idx) || can_delete_single(idx);
-
-/**
- * @param {float} dt 
+ * @param {float} dt
  */
 const game_frame = (dt) => {
   recalc_city_stats();
@@ -630,30 +587,19 @@ const game_frame = (dt) => {
   for (let i = 0; i < maxidx; i += 1) {
     if (city.info[3 * i + 2] < 0) continue;
     const build = !have_built && Math.random() < 0.1 / maxidx;
-    const is_new = city.info[3 * i + 1] !== 0;
+    const is_new = city.info[3 * i + 1] === 0;
     const typ = 1 + (Math.random() > 0.5);
     if (build) {
-      if (can_place_double(i, typ)) {
-        city.info[3 * i + 5] = -1.;
-        city.info[3 * i + 2] = 1.;
-        city.info[3 * i + 1] = typ;
-        city.info[3 * i] += .05;
-        have_built = true;
-      } else if (can_place_single(i, typ)) {
-        city.info[3 * i + 1] = typ;
-        city.info[3 * i] += .05;
-        have_built = true;
-      } else {
-        const abstyp = Math.abs(city.info[3 * i + 1]);
-        if (abstyp > 0) {
-          if (can_place_double_story(i, abstyp)) {
-            city.info[3 * i] += .05;
-            have_built = true;
-          } else if (can_place_single_story(i, abstyp)) {
-            city.info[3 * i] += .05;
+      if (is_new) {
+        for (const vis of [3, 2, 1, 0]) {
+          if (can_place(i, typ, vis)) {
+            place(i, typ, vis);
             have_built = true;
           }
         }
+      } else if (can_place_story(i)) {
+        city.info[3 * i] += .05;
+        have_built = true;
       }
     }
     city.info[3 * i] = Math.min(Math.ceil(city.info[3 * i]), city.info[3 * i] + dt * 2.);
@@ -661,7 +607,7 @@ const game_frame = (dt) => {
 };
 
 /**
- * @param {float} dt 
+ * @param {float} dt
  */
 const system_frame = (dt) => {
   let s = 2. * dt;
@@ -690,8 +636,13 @@ const system_frame = (dt) => {
 };
 
 const keydown = () => {
-  if (kd('esc')) {
-    ui.tool = 0;
+  if (kd('escape', 'p')) {
+    if (rafId !== null) {
+      cancelAnimationFrame(rafId);
+      rafId = null;
+    } else {
+      rafId = requestAnimationFrame(draw);
+    }
   }
   if (kd('1')) {
     ui.tool = 1;
