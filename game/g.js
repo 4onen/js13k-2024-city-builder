@@ -694,14 +694,12 @@ ael(document, 'keyup', e => {
 });
 ael(CV, "pointerdown", e => {
   e.preventDefault();
-  console.log(ui.selected_bldg);
   ui.locksel = true;
   ui.drag = e.pointerId;
   mmovpos(e);
 });
 ael(CV, "pointermove", mmovpos);
 ael(CV, "pointerup", e => {
-  console.log("up", ui.drag, e.pointerId);
   if (ui.drag == e.pointerId) {
     ui.drag = ui.mouseX = ui.mouseY = null;
   }
