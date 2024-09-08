@@ -249,11 +249,16 @@ const ui = {
   fov: 75,
   cam_x: 0,
   cam_y: 0,
+  cam_fwd: 0,
+  cam_rgt: 0,
   gtime: 0,
-  mouseX: 0,
-  mouseY: 0,
+  mouseX: null,
+  mouseY: null,
   tool: 0,
-  selected_bldg: -1,
+  locksel: false,
+  hovered_bldg: -1,
+  selected_bldg: null,
+  drag: null,
 };
 
 // City states should change only on sim steps. Exceptions:
@@ -422,10 +427,10 @@ const init_gl = () => {
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 };
 
-const set_unifs = (t, p) => {
+const set_unifs = (p) => {
   gl.useProgram(p.p);
   gl.uniform1i(p.unifs.sidel, map.sidel);
-  gl.uniform1i(p.unifs.selected_bldg, ui.selected_bldg);
+  gl.uniform1i(p.unifs.selected_bldg, ui.selected_bldg !== null ? ui.selected_bldg : ui.hovered_bldg);
   gl.uniform3fv(p.unifs.tool, [[1., 0., 0.], [0., 0., 1.]][Math.min(1, ui.tool)]);
   gl.uniform2f(p.unifs.woff, ui.cam_x, ui.cam_y);
   const s = Math.SQRT1_2;
@@ -456,18 +461,24 @@ const draw = (t) => {
   gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
   gl.clearBufferiv(gl.COLOR, 0, new Int32Array([-1, -1, -1, -1]));
   gl.clear(gl.DEPTH_BUFFER_BIT);
-  set_unifs(t, pick_prog);
-  gl.drawElementsInstanced(gl.TRIANGLES, TILE.NTRI * 3, gl.UNSIGNED_BYTE, 0, map.sidel * map.sidel);
+  if (ui.mouseX && ui.mouseY) {
+    set_unifs(pick_prog);
+    gl.drawElementsInstanced(gl.TRIANGLES, TILE.NTRI * 3, gl.UNSIGNED_BYTE, 0, map.sidel * map.sidel);
 
-  const d = new Int32Array([-1, -1, -1, -1]);
-  gl.readPixels(
-    ui.mouseX, ui.mouseY, 1, 1, gl.RGBA_INTEGER, gl.INT, d
-  );
-  ui.selected_bldg = d[0];
+    const d = new Int32Array([-1, -1, -1, -1]);
+    gl.readPixels(
+      ui.mouseX, ui.mouseY, 1, 1, gl.RGBA_INTEGER, gl.INT, d
+    );
+    ui.hovered_bldg = d[0];
+  }
+  if (ui.locksel) {
+    ui.locksel = false;
+    ui.selected_bldg = ui.hovered_bldg >= 0 ? ui.hovered_bldg : null;
+  }
 
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-  set_unifs(t, tile_prog);
+  set_unifs(tile_prog);
   gl.drawElementsInstanced(gl.TRIANGLES, TILE.NTRI * 3, gl.UNSIGNED_BYTE, 0, map.sidel * map.sidel);
   gl.flush();
   rafId = requestAnimationFrame(draw);
@@ -614,24 +625,13 @@ const system_frame = (dt) => {
   if (kd('shift')) {
     s *= 3;
   }
-  if (kd('a', 'arrowleft')) {
-    ui.cam_x += s;
-    ui.cam_y -= s;
-  }
-  if (kd('w', 'arrowup')) {
-    ui.cam_x += s;
-    ui.cam_y += s;
-  }
-  if (kd('s', 'arrowdown')) {
-    ui.cam_x -= s;
-    ui.cam_y -= s;
-  }
-  if (kd('d', 'arrowright')) {
-    ui.cam_x -= s;
-    ui.cam_y += s;
-  }
-  ui.cam_x = Math.max(Math.min(ui.cam_x, map.sidel), 0.);
-  ui.cam_y = Math.max(Math.min(ui.cam_y, map.sidel), 0.);
+  if (kd('w', 'arrowup')) ui.cam_fwd += s;
+  if (kd('a', 'arrowleft')) ui.cam_rgt -= s;
+  if (kd('s', 'arrowdown')) ui.cam_fwd -= s;
+  if (kd('d', 'arrowright')) ui.cam_rgt += s;
+  ui.cam_x = Math.max(Math.min(ui.cam_x + ui.cam_fwd - ui.cam_rgt, map.sidel), 0.);
+  ui.cam_y = Math.max(Math.min(ui.cam_y + ui.cam_fwd + ui.cam_rgt, map.sidel), 0.);
+  ui.cam_fwd = ui.cam_rgt = 0;
   game_frame(dt);
 };
 
@@ -663,33 +663,48 @@ const system_loop = () => {
 // ==== EVENT REGISTRATION ====
 // ============================
 
+const mmovpos = e => {
+  e.preventDefault();
+  if (!gl) return;
+  const r = CV.getBoundingClientRect();
+  const newx = (e.clientX - r.left) * gl.canvas.width / r.width;
+  const newy = gl.canvas.height * (1 - (e.clientY - r.top) / r.height) - 1;
+  if (ui.drag == e.pointerId && ui.mouseX) {
+    ui.cam_rgt -= .005 * (newx - ui.mouseX);
+    ui.cam_fwd -= .005 * (newy - ui.mouseY);
+  }
+  ui.mouseX = newx;
+  ui.mouseY = newy;
+};
+
 const ael = (e, t, f) => e.addEventListener(t, f);
 
-ael(window, 'webglcontextlost', (e) => {
+ael(window, 'webglcontextlost', e => {
   console.warn('WebGL context lost', e);
   cancelAnimationFrame(requestAnimationFrameId);
 });
-ael(document, 'keydown', (e) => {
+ael(document, 'keydown', e => {
   const k = e.key.toLowerCase();
   if (!USED_KEYS.has(k)) return;
   keys.add(k);
   keydown();
 });
-ael(document, 'keyup', (e) => {
+ael(document, 'keyup', e => {
   keys.delete(e.key.toLowerCase());
 });
-ael(CV, "mousemove", (e) => {
-  if (!gl) return;
-  const r = CV.getBoundingClientRect();
-  ui.mouseX = (e.clientX - r.left) * gl.canvas.width / r.width;
-  ui.mouseY = gl.canvas.height * (1 - (e.clientY - r.top) / r.height) - 1;
-});
-ael(CV, "mousedown", (e) => {
+ael(CV, "pointerdown", e => {
   e.preventDefault();
   console.log(ui.selected_bldg);
+  ui.locksel = true;
+  ui.drag = e.pointerId;
+  mmovpos(e);
 });
-ael(CV, "touchdown", (e) => {
-  e.preventDefault();
+ael(CV, "pointermove", mmovpos);
+ael(CV, "pointerup", e => {
+  console.log("up", ui.drag, e.pointerId);
+  if (ui.drag == e.pointerId) {
+    ui.drag = ui.mouseX = ui.mouseY = null;
+  }
 });
 ael(SND_EL, "change", () => s(SELECT_SND2));
 ael(SND_EL, 'mouseenter', () => s(MO_SND));
