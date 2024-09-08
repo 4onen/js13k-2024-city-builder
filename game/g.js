@@ -94,7 +94,7 @@ uniform mat4 w2v;
 uniform mat4 v2c;
 uniform int selected_bldg;
 uniform vec3 selcol;
-float random(vec2 st){return fract(sin(dot(st.xy,vec2(12.9898,78.233)))*43758.5453123);}
+float random(vec2 st){return fract(sin(dot(st.xy,vec2(12.9898,78.233)))*43.5453123);}
 void main() {
 mp=pos;
 tid=gl_InstanceID;
@@ -127,7 +127,7 @@ layout(location=0) out vec4 outColor;
 layout(location=1) out int outTid;
 uniform int selected_bldg;
 uniform vec3 selcol;
-float random(vec2 st){return fract(sin(dot(st.xy,vec2(12.9898,78.233)))*43758.5453123);}
+float random(vec2 st){return fract(sin(dot(st.xy,vec2(12.9898,78.233)))*43.5453123);}
 vec3 primcol(){
   switch(ttyp){
     case 1:return vec3(1.,.8,.8);
