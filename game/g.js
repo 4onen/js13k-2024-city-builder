@@ -107,11 +107,11 @@ vec2 dblp = (mp.xz-.5)*dbl+1.;
 const float eps = .0002;
 wp=vec3(dblp.x,mp.y,dblp.y)*step(-0.5,i.z);
 wp.x-=mod(iid+eps,sidelf);
-wp.y*=1.+.1*random(wp.xz);
+wp.y*=.1*random(wp.xz)+.5*i.x;
 wp.z-=floor((iid+eps)/sidelf);
 development=i.x+float(selcol==vec3(0.,1.,0.));
 ttyp=int(i.y);
-gl_Position=v2c*w2v*vec4(wp*vec3(1.,i.x*.5,1.)+vec3(woff.x,0.0,woff.y),1.);
+gl_Position=v2c*w2v*vec4(wp+vec3(woff.x,0.0,woff.y),1.);
 }`,
   //DEBUG renderer
   //FS: `#version 300 es\nprecision mediump float;precision mediump int;in vec3 wp;in vec3 mp;flat in float development;flat in int tid;flat in int ttyp;layout(location=0) out vec4 outColor;layout(location=1) out int outTid;void main(){float iid=float(tid);outColor=vec4(mod(iid,7.)/7.,mod(iid,13.)/13.,0.,1.0);}`,
