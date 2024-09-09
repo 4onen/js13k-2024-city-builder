@@ -16,7 +16,27 @@ const FRAMES_FPS_SMOOTHING = 5;
 const FPS_UPDATE_INTERVAL = 0.25;
 const NEAR = 0.6;
 const FAR = 100.;
-const USED_KEYS = new Set(['w', 'a', 's', 'd', 'arrowup', 'arrowleft', 'arrowdown', 'arrowright', 'shift', '1', '2', 'e', 'escape', 'p']);
+const USED_KEYS = new Set(['w', 'a', 's', 'd', 'arrowup', 'arrowleft', 'arrowdown', 'arrowright', 'shift', '1', '2', 'e', 'escape', 'p', 'r']);
+
+const MAXHT = 4;
+// Builtin maps
+/**
+ * @type {Object.<string, Array<{name:string,sidel:number,dat:string}>>}
+ */
+const BMAPS = {
+  tut: [
+    { name: "up", sidel: 1 },
+    { name: "dbl", sidel: 2, dat: "000000" },
+    { name: "crs", sidel: 3, dat: "F000F0000000F000F0" },
+    { name: "qd", sidel: 3, dat: "F000F0000000F00000" },
+  ],
+  canvas: [
+    { name: "7x7", sidel: 7 },
+    { name: "9x9", sidel: 9 },
+    { name: "11x11", sidel: 11 },
+    { name: "absurd", sidel: 127 },
+  ]
+};
 
 const BULLDOZE_SND = [, 1, , , .3, .4, 4, , , , , , , , , .4, , .3, .2];
 const MO_SND = [.4, 0, 200, , , .04, 1, , , , 100, .04, , , , , , , .05];
@@ -192,7 +212,10 @@ void main(){outTid=tid;}`
 // =======================
 
 const CV = document.querySelector('canvas');
+const LPANE = document.getElementById('lpane');
 const PBTN = document.getElementById('playdialog');
+const CBTN = document.getElementById('conf');
+const DBTN = document.getElementById('deny');
 const CD = document.getElementById('cd');
 const SND_EL = document.getElementById('snd');
 const FPS_EL = document.getElementById('fps');
@@ -240,9 +263,10 @@ const keys = new Set();
 
 // Map states are loaded once per level and should never change w/o reload
 // * e.g. heightmap, sidelength, etc.
-let map = {
-  sidel: 7,
-};
+/**
+ * @type {{sidel:number,builtin_num?:number}}
+ */
+let map = {};
 
 // UI states should be able to change every frame, even with sim paused
 // * gtime: Remember "Graphics produces time, physics consumes it" (in bite-sized chunks)
@@ -262,12 +286,9 @@ const ui = {
   drag: null,
 };
 
-// City states should change only on sim steps. Exceptions:
-// * Buildings should place on mousedown
-// * People states (if I get to them) change on frame, to let the GPU do paths.
+// City states should change only on sim steps.
 const city = {
-  // Info: "devel" and "typ" floats, packed
-  info: new Float32Array(3. * map.sidel * map.sidel).fill(0.),
+  // info: "height","typ","vis" floats, packed
   stats: { typs: [] },
 };
 
@@ -276,9 +297,33 @@ const city = {
 // ===================
 
 /**
+ * @param {{sidel: number, dat: string}} mapdat 
+ */
+const load_builtin_map = (cat, n) => {
+  const mapdat = BMAPS[cat][n];
+  map.sidel = mapdat.sidel;
+  map.builtin_cat = cat;
+  map.builtin_num = n;
+  city.info = new Float32Array(3. * map.sidel * map.sidel).fill(-1);
+  if (!mapdat.dat) {
+    city.info.fill(0);
+  } else {
+    for (let i = 0; i < map.sidel * map.sidel; i += 1) {
+      const hdat = parseInt(mapdat.dat[2 * i], 16);
+      if (hdat <= MAXHT) {
+        city.info[3 * i] = hdat;
+        const vdat = parseInt(mapdat.dat[2 * i + 1], 16);
+        city.info[3 * i + 1] = vdat >> 2;
+        city.info[3 * i + 2] = vdat & 3;
+      }
+    }
+  }
+};
+
+/**
  * @param {DOMHighResTimeStamp} timestamp
  */
-const frametime = (timestamp) => {
+const frametime = timestamp => {
   frame_num += 1;
   if (last_timestamp === null) last_timestamp = timestamp;
   const dt = timestamp - last_timestamp > 0 ? (timestamp - last_timestamp) * 0.001 : TARGET_DT;
@@ -299,7 +344,7 @@ const frametime = (timestamp) => {
  * Alerts the user of an error
  * @param {string} msg
  */
-const ale = (msg) => {
+const ale = msg => {
   alert("Error " + msg);
 };
 
@@ -326,7 +371,7 @@ const kd = (...args) => {
   return false;
 };
 
-const s = (args) => {
+const s = args => {
   if (SND_EL.checked) zzfx(...args);
 };
 
@@ -475,6 +520,7 @@ const draw = (t) => {
   if (ui.locksel) {
     ui.locksel = false;
     ui.selected_bldg = ui.hovered_bldg >= 0 ? ui.hovered_bldg : null;
+    if (ui.selected_bldg != null) s(MO_SND);
   }
 
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
@@ -500,7 +546,7 @@ const recalc_city_stats = () => {
     size: [0, 0, null, 0],
   };
   const typs = [
-    Object.assign({}, t),
+    undefined,
     Object.assign({}, t),
     Object.assign({}, t),
   ];
@@ -508,7 +554,11 @@ const recalc_city_stats = () => {
     const typ = city.info[3 * i + 1];
     const tiles = vtc(city.info[3 * i + 2]);
     const height = Math.ceil(city.info[3 * i]);
-    for (const s of [t, typs[typ]]) {
+    t.buildings += (typ > 0) * tiles;
+    t.stories += height * tiles;
+    t.size[tiles] += typ > 0;
+    if (typ > 0) {
+      let s = typs[typ];
       s.buildings += (typ > 0) * tiles;
       s.stories += height * tiles;
       s.size[tiles] += typ > 0;
@@ -524,13 +574,13 @@ const can_see = (n) => n != N && n != N * N && n != N * N * N && n != N * N * N 
 /**
  * @returns {bool}
  */
-const can_place_story = (idx, vis) => {
+const can_place_story = (idx, typ, vis) => {
   let height = city.info[3 * idx];
-  let typ = city.info[3 * idx + 1];
+  typ = typ || city.info[3 * idx + 1];
   vis = vis || city.info[3 * idx + 2];
   let building = height != Math.ceil(height);
   return (
-    height < 4
+    height < MAXHT
     && !building
     && can_see(city.stats.stories + vtc(vis))
     && can_see(city.stats.typs[typ].stories + vtc(vis))
@@ -544,7 +594,7 @@ const can_place_story = (idx, vis) => {
 const can_place = (idx, typ, vis) => {
   const t = city.stats.typs[typ];
   return (
-    can_place_story(idx, vis)
+    can_place_story(idx, typ, vis)
     && can_see(city.stats.buildings + vtc(vis))
     && can_see(city.stats.size[vtc(vis)] + 1)
     && can_see(t.buildings + vtc(vis))
@@ -595,7 +645,7 @@ const can_delete = (idx) => {
 const game_frame = (dt) => {
   recalc_city_stats();
   const maxidx = map.sidel * map.sidel;
-  let have_built = false;
+  let have_built = !kd('r');
   for (let i = 0; i < maxidx; i += 1) {
     if (city.info[3 * i + 2] < 0) continue;
     const build = !have_built && Math.random() < 0.1 / maxidx;
@@ -637,7 +687,7 @@ const system_frame = (dt) => {
 };
 
 const keydown = () => {
-  if (kd('escape', 'p')) {
+  if (kd('escape', 'p') && map.sidel) {
     if (rafId !== null) {
       cancelAnimationFrame(rafId);
       rafId = null;
@@ -707,14 +757,17 @@ ael(CV, "pointerup", e => {
 });
 ael(SND_EL, "change", () => s(SELECT_SND2));
 ael(SND_EL, 'mouseenter', () => s(MO_SND));
-ael(PBTN, 'mouseenter', () => s(MO_SND));
-ael(PBTN, 'mousedown', () => s(SELECT_SND2));
+for (let b of [CBTN, DBTN, PBTN]) {
+  ael(PBTN, 'mouseenter', e => { if (!e.target.disabled) s(MO_SND); });
+  ael(PBTN, 'mousedown', e => { if (!e.target.disabled) s(SELECT_SND2); });
+}
 
 // =================
 // ==== RUNTIME ====
 // =================
 
 PBTN.addEventListener('close', (e) => {
+  load_builtin_map('canvas', 3);
   init_gl();
   rafId = requestAnimationFrame(draw);
 });

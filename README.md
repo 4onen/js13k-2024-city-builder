@@ -189,3 +189,36 @@ No progress. Visiting with family friends and failing to fix my sleep schedule.
 
 ## Day 27: 2024-09-08
 
+Devised map data format:
+
+* name: String, obvious
+* sidel: Number, side length of the map data (based on assumption in code that map is square for simpler math. Data does not have to be...)
+* dat: String - if omitted, will be a blank green field of full sidel x sidel.
+  * Consists of packed 2-digit hex elements
+    * Digit 1: Height
+      * If greater than the code max height, delete tile from visible map (ignoring remaining data)
+    * Digit 2: Typ, Vis
+      * Upper two bits are the type of the tile
+      * Lower two bits are the visual size of the tile
+
+With this format, fit some basic tutorial & sandbox levels. TODO: Add level goals, level select, level progression.
+
+Also did some more disconnected UI elements and minor lighting changes.
+
+Enjoy a screenshot of the 127x127 stress-test level!
+
+![A map filling the screen from bottom to top, and onward besides](dev_screenshots/day27_128x128.png)
+
+I also flew to the far end of this map to see what I'd find. I found shader floating point precision issues! Fun!
+
+![A corner of a large map showing "banding" stripes in the grass, paths, and building heights](dev_screenshots/day27_128x128_percision_issues.png)
+
+Can't believe this is still only 10,599 bytes zipped without minification.
+
+## Day 28: 2024-09-09
+
+## Day 29: 2024-09-10
+
+## Day 30: 2024-09-11
+
+## Day 31: 2024-09-12

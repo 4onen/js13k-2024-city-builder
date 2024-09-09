@@ -28,6 +28,13 @@
             height: 100%;
         }
 
+        button {
+            font-size: 3em;
+            border-radius: 1em;
+            height: 2em;
+            width: 2em;
+        }
+
         #fps {
             width: 3em;
         }
@@ -38,18 +45,19 @@
             right: 0;
             text-align: center;
             padding: 0.5em;
-            border-bottom-left-radius: 1em;
+            border-bottom-left-radius: 3em;
             background-color: azure;
         }
 
         #playdialog {
             position: absolute;
             background-color: limegreen;
-            border-radius: 1em;
+            border-radius: 3em;
             margin: auto;
             padding: 1em;
             font-size: 4em;
             top: 50%;
+            cursor: pointer;
         }
 
         #snd {
@@ -64,6 +72,31 @@
         #snd:checked::before {
             content: "🔊";
         }
+
+        #cd {
+            position: absolute;
+            left: calc(50svw);
+            bottom: 0;
+            transform: translateX(-50%);
+            padding: 0.2em;
+            border-top-left-radius: 3em;
+            border-top-right-radius: 3em;
+            background-color: Canvas;
+
+            button {
+                color: limegreen;
+            }
+        }
+
+        #lpane {
+            position: absolute;
+            left: 0;
+            bottom: 0;
+            width: 1.5em;
+            padding-block: 1em;
+            border-top-right-radius: 3em;
+            background-color: Canvas;
+        }
     </style>
     <script src="dep/ZzFXMicro.min.js" type="text/javascript"></script>
     <script src="g.js" type="module"></script>
@@ -72,16 +105,18 @@
 <body>
     <canvas></canvas>
     <dialog id="playdialog" onclick="this.close()" open>Play</dialog>
-    <div popover id="cd">
-        <button id="conf"></button>
-        <button id="deny"></button>
+    <div id="cd">
+        <button id="conf" disabled>✔</button>
+        <button id="deny" disabled>🚫</button>
     </div>
+    <div id="lpane"></div>
     <div id="tlui">
         FPS:
         <div id="fps">NaN</div>
         <input type="checkbox" id="snd" checked><label for="snd"
             style="display: none;">Sound</label></input>
     </div>
+    <dialog id="lvlselect"></dialog>
 </body>
 
 </html>
