@@ -16,16 +16,19 @@ const FRAMES_FPS_SMOOTHING = 5;
 const FPS_UPDATE_INTERVAL = 0.25;
 const NEAR = 0.6;
 const FAR = 100.;
-const USED_KEYS = new Set(['w', 'a', 's', 'd', 'arrowup', 'arrowleft', 'arrowdown', 'arrowright', 'shift', '1', '2', 'e', 'escape', 'p', 'r']);
+const USED_KEYS = new Set(['w', 'a', 's', 'd', 'arrowup', 'arrowleft', 'arrowdown', 'arrowright', 'shift', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'e', 'escape', 'p', 'r', '`']);
 
 const MAXHT = 4;
 // Builtin maps
 /**
- * @type {Object.<string, Array<{name:string,sidel:number,dat:string}>>}
+ * @typedef {{name:string,sidel:number,dat?:string,tools?:Array<int>}} CWTNMap
+ */
+/**
+ * @type {Object.<string, Array<CWTNMap>>}
  */
 const BMAPS = {
   tut: [
-    { name: "up", sidel: 1 },
+    { name: "up", sidel: 1, tools: [0, 1] },
     { name: "dbl", sidel: 2, dat: "000000" },
     { name: "crs", sidel: 3, dat: "F000F0000000F000F0" },
     { name: "qd", sidel: 3, dat: "F000F0000000F00000" },
@@ -43,6 +46,25 @@ const MO_SND = [.4, 0, 200, , , .04, 1, , , , 100, .04, , , , , , , .05];
 const SELECT_SND = [, , 200, , .07, , 1, , , , -100, .04];
 const SELECT_SND2 = [, , 400];
 const COMMERICAL_DOOR = [.5, 0, 800, , .7, , 1, , , , -120, .4, , , , , .8];
+
+const MKTOOL = (i, c, s, v) => {
+  const r = document.createElement("button");
+  const n = `TOOL${i}`;
+  r.id = n;
+  r.textContent = c;
+  r.style[s] = v;
+  return r;
+};
+const TOOLS = [
+  MKTOOL(0, "🚧"),
+  MKTOOL(1, "🏗️"),
+  MKTOOL(2, "🏠"),
+  MKTOOL(3, "🏠🏠"),
+  MKTOOL(4, "🏠🏠🏠🏠"),
+  MKTOOL(5, "🛒"),
+  MKTOOL(6, "🛒🛒"),
+  MKTOOL(7, "🛒🛒🛒🛒"),
+];
 
 
 // ====================
@@ -128,7 +150,7 @@ wp=vec3(dblp.x,mp.y,dblp.y)*step(-0.5,i.z);
 wp.x-=mod(iid+eps,sidelf);
 wp.y*=.1*random(wp.xz)+.5*i.x;
 wp.z-=floor((iid+eps)/sidelf);
-development=i.x+float(selcol==vec3(0.,1.,0.));
+development=i.x+float(selected_bldg==tid&&selcol==vec3(0.,1.,0.));
 ttyp=int(i.y);
 gl_Position=v2c*w2v*vec4(wp+vec3(woff.x,0.0,woff.y),1.);
 }`,
@@ -279,7 +301,6 @@ const ui = {
   gtime: 0,
   mouseX: null,
   mouseY: null,
-  tool: 0,
   locksel: false,
   hovered_bldg: -1,
   selected_bldg: null,
@@ -296,14 +317,21 @@ const city = {
 // ==== FUNCTIONS ====
 // ===================
 
+const chtool = i => {
+  [...LPANE.children].forEach(c => c.className = "");
+  (document.getElementById(`TOOL${i ?? O}`) ?? {}).className = "s";
+};
+
+const gtool = () => {
+  const i = LPANE.querySelector(".s")?.id;
+  return i ? parseInt(i.substring(4), 10) : -1;
+};
+
 /**
- * @param {{sidel: number, dat: string}} mapdat 
+ * @param {CWTNMap} mapdat 
  */
-const load_builtin_map = (cat, n) => {
-  const mapdat = BMAPS[cat][n];
+const load_map = mapdat => {
   map.sidel = mapdat.sidel;
-  map.builtin_cat = cat;
-  map.builtin_num = n;
   city.info = new Float32Array(3. * map.sidel * map.sidel).fill(-1);
   if (!mapdat.dat) {
     city.info.fill(0);
@@ -318,6 +346,18 @@ const load_builtin_map = (cat, n) => {
       }
     }
   }
+  if (!mapdat.tools) {
+    LPANE.replaceChildren(...TOOLS);
+  } else {
+    LPANE.replaceChild(TOOLS.map((v, i) => mapdat.tools.includes(i)));
+  }
+  chtool(parseInt(LPANE.firstChild.id.substring(4), 10));
+};
+
+const load_builtin_map = (cat, n) => {
+  load_map(BMAPS[cat][n]);
+  map.builtin_cat = cat;
+  map.builtin_num = n;
 };
 
 /**
@@ -477,7 +517,7 @@ const set_unifs = (p) => {
   gl.useProgram(p.p);
   gl.uniform1i(p.unifs.sidel, map.sidel);
   gl.uniform1i(p.unifs.selected_bldg, ui.selected_bldg !== null ? ui.selected_bldg : ui.hovered_bldg);
-  gl.uniform3fv(p.unifs.tool, [[1., 0., 0.], [0., 0., 1.]][Math.min(1, ui.tool)]);
+  gl.uniform3fv(p.unifs.selcol, [[.5, .5, .5], [1, 0, 0], [0, 1, gtool() == 0]][(gtool() >= 0) + can()]);
   gl.uniform2f(p.unifs.woff, ui.cam_x, ui.cam_y);
   const s = Math.SQRT1_2;
   gl.uniformMatrix4fv(p.unifs.w2v, true, [
@@ -583,7 +623,7 @@ const can_place_story = (idx, typ, vis) => {
     height < MAXHT
     && !building
     && can_see(city.stats.stories + vtc(vis))
-    && can_see(city.stats.typs[typ].stories + vtc(vis))
+    && can_see(city.stats.typs[typ]?.stories + vtc(vis))
     && (!(vis & 1) || city.info[3 * idx + 4] === 0)
     && (!(vis & 2) || city.info[3 * (idx + map.sidel) + 1] === 0)
     && (!(vis == 3) || city.info[3 * (idx + map.sidel) + 4] === 0)
@@ -607,6 +647,40 @@ const can_place = (idx, typ, vis) => {
 };
 
 /**
+ * @param {number} idx
+ * @returns {bool}
+ */
+const can_delete = (idx) => {
+  return false;
+  const typ = city.info[3 * idx + 1];
+  const height = Math.ceil(city.info[3 * idx]);
+  return (
+    can_see(city.stats.stories - vtc(vis) * height)
+    && can_see(city.stats.buildings - vtc(vis))
+    && can_see(city.stats.typs[typ]?.stories - vtc(vis) * height)
+    && can_see(city.stats.typs[typ]?.buildings - vtc(vis))
+    && can_see(city.stats.typs[typ]?.size[vtc(vis)] - 1)
+    && (!(vis & 1) || (idx + 1) % map.sidel > 0)
+    && (!(vis & 2) || idx < map.sidel * map.sidel - 1)
+  );
+};
+
+const can = () => {
+  let t, i = ui.selected_bldg ?? ui.hovered_bldg;
+  if ((t = gtool()) < 0) return false;
+  return (
+    (t == 0 && can_delete(i))
+    || (t == 1 && city.info[3 * i] > 0 && can_place_story(i))
+    || (t == 2 && city.info[3 * i] <= 0 && can_place(i, 1, 0))
+    || (t == 3 && city.info[3 * i] <= 0 && can_place(i, 1, 1 + ui.v))
+    || (t == 4 && city.info[3 * i] <= 0 && can_place(i, 1, 3))
+    || (t == 5 && city.info[3 * i] <= 0 && can_place(i, 2, 0))
+    || (t == 6 && city.info[3 * i] <= 0 && can_place(i, 2, 1 + ui.v))
+    || (t == 7 && city.info[3 * i] <= 0 && can_place(i, 2, 3))
+  );
+};
+
+/**
  * @param {number} i idx
  * @param {number} typ
  * @param {number} vis
@@ -620,24 +694,20 @@ const place = (i, typ, vis) => {
   city.info[3 * i] += .05;
 };
 
-
-/**
- * @param {number} idx
- * @returns {bool}
- */
-const can_delete = (idx) => {
-  const typ = city.info[3 * idx + 1];
-  const height = Math.ceil(city.info[3 * idx]);
-  return (
-    can_see(city.stats.stories - vtc(vis) * height)
-    && can_see(city.stats.buildings - vtc(vis))
-    && can_see(city.stats.typs[typ].stories - vtc(vis) * height)
-    && can_see(city.stats.typs[typ].buildings - vtc(vis))
-    && can_see(city.stats.typs[typ].size[vtc(vis)] - 1)
-    && (!(vis & 1) || (idx + 1) % map.sidel > 0)
-    && (!(vis & 2) || idx < map.sidel * map.sidel - 1)
-  );
+const conf = () => {
+  if (!can()) return;
+  if (ui.selected_bldg == null || ui.selected_bldg < 0) return;
+  const t = gtool();
+  if (t == 0) do_delete(ui.selected_bldg);
+  if (t == 1) city.info[3 * ui.selected_bldg] += .05;
+  if (t == 2) place(ui.selected_bldg, 1, 0);
+  if (t == 3) place(ui.selected_bldg, 1, 1 + ui.v);
+  if (t == 4) place(ui.selected_bldg, 1, 3);
+  if (t == 5) place(ui.selected_bldg, 2, 0);
+  if (t == 6) place(ui.selected_bldg, 2, 1 + ui.v);
+  if (t == 7) place(ui.selected_bldg, 2, 3);
 };
+
 
 /**
  * @param {float} dt
@@ -680,6 +750,7 @@ const system_frame = (dt) => {
   if (kd('a', 'arrowleft')) ui.cam_rgt -= s;
   if (kd('s', 'arrowdown')) ui.cam_fwd -= s;
   if (kd('d', 'arrowright')) ui.cam_rgt += s;
+  if (kd('e')) conf();
   ui.cam_x = Math.max(Math.min(ui.cam_x + ui.cam_fwd - ui.cam_rgt, map.sidel), 0.);
   ui.cam_y = Math.max(Math.min(ui.cam_y + ui.cam_fwd + ui.cam_rgt, map.sidel), 0.);
   ui.cam_fwd = ui.cam_rgt = 0;
@@ -687,6 +758,17 @@ const system_frame = (dt) => {
 };
 
 const keydown = () => {
+  if (kd('`')) chtool(0);
+  if (kd('0')) chtool(0);
+  if (kd('1')) chtool(1);
+  if (kd('2')) chtool(2);
+  if (kd('3')) chtool(3);
+  if (kd('4')) chtool(4);
+  if (kd('5')) chtool(5);
+  if (kd('6')) chtool(6);
+  if (kd('7')) chtool(7);
+  if (kd('8')) chtool(8);
+  if (kd('9')) chtool(9);
   if (kd('escape', 'p') && map.sidel) {
     if (rafId !== null) {
       cancelAnimationFrame(rafId);
@@ -694,12 +776,6 @@ const keydown = () => {
     } else {
       rafId = requestAnimationFrame(draw);
     }
-  }
-  if (kd('1')) {
-    ui.tool = 1;
-  }
-  if (kd('2')) {
-    ui.tool = 2;
   }
 };
 
@@ -757,9 +833,9 @@ ael(CV, "pointerup", e => {
 });
 ael(SND_EL, "change", () => s(SELECT_SND2));
 ael(SND_EL, 'mouseenter', () => s(MO_SND));
-for (let b of [CBTN, DBTN, PBTN]) {
-  ael(PBTN, 'mouseenter', e => { if (!e.target.disabled) s(MO_SND); });
-  ael(PBTN, 'mousedown', e => { if (!e.target.disabled) s(SELECT_SND2); });
+for (let b of [CBTN, DBTN, PBTN, ...TOOLS]) {
+  ael(b, 'mouseenter', e => { if (!e.target.disabled) s(MO_SND); });
+  ael(b, 'mousedown', e => { if (!e.target.disabled) s(SELECT_SND2); });
 }
 
 // =================

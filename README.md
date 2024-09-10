@@ -217,6 +217,12 @@ Can't believe this is still only 10,599 bytes zipped without minification.
 
 ## Day 28: 2024-09-09
 
+Hooked up some more UI today! I can now manually place buildings... albeit mostly done through keybinds. Also, I forgot to mention yesterday that the game works on mobile! (Although, the stress test shows a clear limit to mobile GPU floating point precision at 10 to 11 bits of `gl_InstanceId` floating-point conversions.)
+
+![A few manually-built buildings with new UI along the left-hand edge](dev_screenshots/day28_ui.png)![A mobile interface showing differing emoji and a dark checkerboard breakdown of the renderer in the background](dev_screenshots/day28_mobileui.png)
+
+Starting to push the size limits though, considering I've few maps and no music. 11,353 bytes now. Gonna have to write a minifier soon!
+
 ## Day 29: 2024-09-10
 
 ## Day 30: 2024-09-11

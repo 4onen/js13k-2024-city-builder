@@ -89,13 +89,28 @@
         }
 
         #lpane {
+            display: flex;
+            flex-direction: column-reverse;
             position: absolute;
             left: 0;
             bottom: 0;
-            width: 1.5em;
+            width: 2em;
             padding-block: 1em;
             border-top-right-radius: 3em;
             background-color: Canvas;
+
+            button {
+                letter-spacing: -.7em;
+                width: 2.7em;
+                margin-inline: -1em;
+                margin-block: .1em;
+                white-space: nowrap;
+            }
+        }
+
+        .s {
+            border-color: yellow;
+            background-color: yellow;
         }
     </style>
     <script src="dep/ZzFXMicro.min.js" type="text/javascript"></script>
