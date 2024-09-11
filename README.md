@@ -225,6 +225,10 @@ Starting to push the size limits though, considering I've few maps and no music.
 
 ## Day 29: 2024-09-10
 
+No progress. Trying to take care of myself.
+
 ## Day 30: 2024-09-11
+
+Made a minifier, realized I've been calculating my size wrong this whole time. I've been updating a file rather than making zips fresh, and the actual size with a fresh zip is 8703 bytes, not over 11,000. Oops! (Also the minifier saves exactly 0 bytes.)
 
 ## Day 31: 2024-09-12

@@ -1,7 +1,9 @@
 DEPS=ZzFXMicro.min.js zzfxm.min.js
+TARGETS=g.js index.html
 ENV_DIR=env
 GAME_DIR=game/
-DEP_DIR=$(GAME_DIR)/dep/
+BUILD_DIR=build/
+DEP_DIR=$(GAME_DIR)/dep
 OUT=submission.zip
 
 size: $(OUT)
@@ -12,17 +14,24 @@ install_dev: env $(addprefix $(DEP_DIR),$(DEPS))
 	env/bin/pip install -r requirements.txt
 
 clean:
-	rm -vrf submission.zip
+	rm -vrf submission.zip $(BUILD_DIR)
 
 full_clean: clean
-	rm -vrf env $(DEP_DIR)
+	rm -vrf env $(DEP_DIR) $(BUILD_DIR)
 
-.PHONY: install_dev clean full_clean size
+build: $(addprefix $(BUILD_DIR),$(DEPS)) $(addprefix $(BUILD_DIR),$(TARGETS))
+
+$(BUILD_DIR)%: $(GAME_DIR)%
+	mkdir -p $(BUILD_DIR)
+	./scrapped_minifier.py $^ -o $(BUILD_DIR)
+
+.PHONY: install_dev clean full_clean size build
 
 .PRECIOUS: env
 
-$(OUT): $(addprefix $(DEP_DIR),$(DEPS)) $(wildcard game/*)
-	cd game && zip -r ../$@ .
+$(OUT): $(addprefix $(GAME_DIR),$(DEPS)) $(addprefix $(GAME_DIR),$(TARGETS))
+	rm -f $@
+	cd $(BUILD_DIR) && zip -r ../$@ .
 
 env:
 	python3 -m venv $@
