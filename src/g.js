@@ -111,6 +111,7 @@ const MKTOOL = (i, c, s, v) => {
   r.id = n;
   r.textContent = c;
   r.style[s] = v;
+  r.addEventListener("click", () => chtool(i));
   return r;
 };
 // The unchanging array of tools supported by the game.
