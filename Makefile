@@ -114,19 +114,3 @@ $(OUT): $(addprefix $(BUILD_DIR)/,$(DEPS)) $(addprefix $(BUILD_DIR)/,$(TARGETS))
 # This is the rule to create our python environment. That's all.
 $(PYENV_DIR):
 	python3 -m venv $@
-
-# These are the rules to download the dependencies of the project. They create
-# the dependencies directory if it doesn't exist, and then download specific
-# files from GitHub releases into that directory.
-#
-# I did this both to figure out if I could and because I was too lazy to copy
-# their license files and explain which files are under which licenses. This
-# also helps establish provenance of the files, though I'm unsure what'll
-# happen if these repos are ever yanked from GitHub or rebased...
-$(DEP_DIR)/ZzFXMicro.min.js:
-	mkdir -p $(DEP_DIR)
-	curl --output-dir $(DEP_DIR) -O 'https://raw.githubusercontent.com/KilledByAPixel/ZzFX/e5390764053cf24c56e9d8f82c842345691d16d2/ZzFXMicro.min.js'
-
-$(DEP_DIR)/zzfxm.min.js:
-	mkdir -p $(DEP_DIR)
-	curl --output-dir $(DEP_DIR) -O 'https://raw.githubusercontent.com/keithclark/ZzFXM/cb07fa9ca36aefd67a0c8c656d2958b62f8ed9fe/zzfxm.min.js'
