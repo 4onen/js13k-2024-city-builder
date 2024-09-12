@@ -61,7 +61,7 @@ size: $(OUT)
 # the project, as well as the requirements.txt file, which lists the Python
 # packages that we need to install. The rule creates the Python environment and
 # installs the packages into it.
-install_dev: requirements.txt env
+install_dev: $(SCRIPT_DIR)/requirements.txt env
 	$(PYENV_DIR)/bin/pip install --upgrade pip
 	$(PYENV_DIR)/bin/pip install -r $<
 
