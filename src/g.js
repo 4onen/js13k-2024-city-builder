@@ -1286,6 +1286,12 @@ ael(CV, "pointerup", e => {
   }
 });
 
+// If the player pushes the confirm button, try doing the thing
+ael(CBTN, 'click', conf);
+
+// If the player pushes the deny button, unlock the selection
+ael(DBTN, 'click', () => ui.selected_bldg = null);
+
 // If we lose the context, warn and stop the render loop
 ael(window, 'webglcontextlost', e => {
   console.warn('WebGL context lost', e);
