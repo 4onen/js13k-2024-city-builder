@@ -6,5 +6,8 @@ cd "$(dirname "$0")/.."
 
 script/update
 
+# Build the game
+make build
+
 # Start the server
-./serve_hot.py game
+./serve_hot.py build

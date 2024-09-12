@@ -1,4 +1,5 @@
 .vscode
-env
-game/dep/
+env/
+dep/
+build/
 submission.zip
