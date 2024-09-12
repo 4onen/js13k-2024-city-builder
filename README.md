@@ -229,6 +229,12 @@ No progress. Trying to take care of myself.
 
 ## Day 30: 2024-09-11
 
-Made a minifier, realized I've been calculating my size wrong this whole time. I've been updating a file rather than making zips fresh, and the actual size with a fresh zip is 8703 bytes, not over 11,000. Oops! (Also the minifier saves exactly 0 bytes.)
+Made a minifier, realized I've been calculating my size wrong this whole time. I've been updating a file rather than making zips fresh, and the actual size with a fresh zip is 8703 bytes, not over 11,000. Oops! (Also the minifier saves exactly 0 bytes, at least as I've built it there.)
+
+In the evening, I reworked my build flow and vendored my dependencies from a checked-in folder instead of downloading them. I now auto-build on change and only play in the browser the minified version. No source maps, so... I hope I don't write any bugs?
+
+I also finally made my JS13K entry page, using a cropped form of the logo above and one of the previous screenshots.
+
+Sooooon! Aaaaaa! 😱 The UI tool selection and conf/deny works now, but I'm still missing level select! And levels! And music! I can't beleive everything I _do_ have fits in just 9,385 bytes!
 
 ## Day 31: 2024-09-12
