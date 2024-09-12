@@ -93,11 +93,11 @@ build: $(addprefix $(DEP_DIR)/,$(DEPS)) $(addprefix $(BUILD_DIR)/,$(TARGETS))
 # again.
 $(BUILD_DIR)/%: minifier.py env $(SOURCE_DIR)/%
 	mkdir -p $(BUILD_DIR)
-	./$< $(word 3,$^) -o $(BUILD_DIR)
+	./$< $(word 3,$^) -o $@
 
 $(BUILD_DIR)/%: minifier.py env $(DEP_DIR)/%
 	mkdir -p $(BUILD_DIR)
-	./$< $(word 3,$^) -o $(BUILD_DIR)
+	./$< $(word 3,$^) -o $@
 
 # This rule prevents minification of the favicon, since it's already in the
 # correct format. Instead we just copy it over.
