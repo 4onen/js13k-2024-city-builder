@@ -78,7 +78,7 @@ const MAXHT = 4;
  */
 const BMAPS = {
   tut: [
-    { name: "up", sidel: 1, tools: [0, 1] },
+    { name: "up", sidel: 1, tools: [1, 2] },
     { name: "dbl", sidel: 2, dat: "000000" },
     { name: "crs", sidel: 3, dat: "F000F0000000F000F0" },
     { name: "qd", sidel: 3, dat: "F000F0000000F00000" },
@@ -706,7 +706,7 @@ const load_map = mapdat => {
   if (!mapdat.tools) {
     LPANE.replaceChildren(...TOOLS);
   } else {
-    LPANE.replaceChild(TOOLS.map((v, i) => mapdat.tools.includes(i)));
+    LPANE.replaceChildren(...TOOLS.filter((v, i) => mapdat.tools.includes(i)));
   }
   chtool(parseInt(LPANE.firstChild.id.substring(4), 10));
 };
@@ -1324,7 +1324,7 @@ for (let b of [CBTN, DBTN, PBTN, ...TOOLS]) {
 
 // When the user clicks the play button
 PBTN.addEventListener('close', (e) => {
-  load_builtin_map('canvas', 3); // Load the first map
+  load_builtin_map('tut', 0); // Load the first map
   init_gl(); // Get the WebGL context
   rafId = requestAnimationFrame(draw); // Start the render loop
 });
