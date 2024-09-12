@@ -1,3 +1,5 @@
+#!/usr/bin/make -f
+
 # The dependencies of the project
 # These are dependencies we download into the dep directory
 # and minify over to the final package at build time.
@@ -18,6 +20,10 @@ PYENV_DIR=env
 # The source directory of the project
 # This is where we keep the original files and check them into source control
 SOURCE_DIR=src
+
+# The script directory of the project
+# This is where we keep the scripts that we use to build & debug the project
+SCRIPT_DIR=script
 
 # The build directory of the project
 # This is where we keep the minified files and build the final package
@@ -91,11 +97,11 @@ build: $(addprefix $(DEP_DIR)/,$(DEPS)) $(addprefix $(BUILD_DIR)/,$(TARGETS))
 # script, which is the script that we use to minify the files.
 # If there's a change to that script, then the source files will be minified
 # again.
-$(BUILD_DIR)/%: minifier.py env $(SOURCE_DIR)/%
+$(BUILD_DIR)/%: $(SCRIPT_DIR)/minifier.py env $(SOURCE_DIR)/%
 	mkdir -p $(BUILD_DIR)
 	./$< $(word 3,$^) -o $@
 
-$(BUILD_DIR)/%: minifier.py env $(DEP_DIR)/%
+$(BUILD_DIR)/%: $(SCRIPT_DIR)/minifier.py env $(DEP_DIR)/%
 	mkdir -p $(BUILD_DIR)
 	./$< $(word 3,$^) -o $@
 

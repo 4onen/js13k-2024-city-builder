@@ -1,0 +1,24 @@
+#!/bin/sh
+
+set -e
+
+cd "$(dirname "$0")/.."
+
+script/update
+
+# Rebuild the game
+./Makefile
+
+# Rebuild the game on change
+env/bin/watchfiles ./Makefile src/ & p1=$!
+
+trap 'kill "$p1"' EXIT INT TERM
+
+# Start the server and wait until it exits
+script/serve_hot.py build
+
+# Kill the other process
+kill "$p1"
+
+# Wait for the other process to exit
+wait
