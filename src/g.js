@@ -99,7 +99,7 @@ const BULLDOZE_SND = [.1, 1, , , .3, .4, 4, , , , , , , , , .4, , .3, .2];
 const MO_SND = [.3, 0, 200, , , .04, 1, , , , 100, .04, , , , , , , .05];
 const SELECT_SND = [, , 400];
 const BUILD_SND = [.3, .2, , .05, , , , .4, , , , , , , 3];
-const COMMERICAL_DOOR = [.05, 0, 800, , .7, , 1, , , , -120, .4, , , , , .8];
+const COMMERICAL_DOOR = [.03, 0, 700, , .7, , 1, , , , -120, .4, , , , , .8];
 
 /**
  * @param {number} i The index of the tool, used to refer to it in all code
