@@ -27,7 +27,7 @@ const USED_KEYS = new Set([ // The set of keys used by the game, for input captu
   'arrowup', 'arrowleft', 'arrowdown', 'arrowright',
   'shift',
   '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
-  'escape', 'e', 'p', 'r', '`'
+  'escape', 'e', 'q', 'p', ';', '`'
 ]);
 
 /**
@@ -1353,7 +1353,7 @@ const system_frame = (dt) => {
  */
 const keydown = () => {
   // Change-tool controls
-  if (kd('r') && !LVLSELWIN.open) setdemo(!demo());
+  if (kd(';') && !LVLSELWIN.open) setdemo(!demo());
   if (kd('`')) chtool(0);
   if (kd('0')) chtool(0);
   if (kd('1')) chtool(1);
@@ -1366,12 +1366,20 @@ const keydown = () => {
   if (kd('8')) chtool(8);
   if (kd('9')) chtool(9);
   // Pause/resume the render loop (supposed to bring up a pause menu, but...)
-  if (kd('escape', 'p') && map.sidel) {
+  if (kd('p') && map.sidel) {
     if (rafId !== null) {
       cancelAnimationFrame(rafId);
       rafId = null;
     } else {
       rafId = requestAnimationFrame(draw);
+    }
+  }
+  if (kd('escape')) {
+    if (LVLSELWIN.open) {
+      LVLSELWIN.close();
+    } else {
+      fill_levelselect();
+      LVLSELWIN.show();
     }
   }
 };
