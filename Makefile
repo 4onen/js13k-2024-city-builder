@@ -3,7 +3,7 @@
 # The dependencies of the project
 # These are dependencies we download into the dep directory
 # and minify over to the final package at build time.
-DEPS=ZzFXMicro.min.js zzfxm.min.js
+DEPS=ZzFXMicro.min.js
 
 # The dependencies directory of the project
 # This is where we keep the original dependencies
