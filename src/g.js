@@ -93,11 +93,11 @@ const BMAPS = {
 };
 
 // Sound effects for the ZZFX engine
-const BULLDOZE_SND = [, 1, , , .3, .4, 4, , , , , , , , , .4, , .3, .2];
-const MO_SND = [.4, 0, 200, , , .04, 1, , , , 100, .04, , , , , , , .05];
-const SELECT_SND = [, , 200, , .07, , 1, , , , -100, .04];
-const SELECT_SND2 = [, , 400];
-const COMMERICAL_DOOR = [.5, 0, 800, , .7, , 1, , , , -120, .4, , , , , .8];
+const BULLDOZE_SND = [.1, 1, , , .3, .4, 4, , , , , , , , , .4, , .3, .2];
+const MO_SND = [.3, 0, 200, , , .04, 1, , , , 100, .04, , , , , , , .05];
+const SELECT_SND = [, , 400];
+const BUILD_SND = [.3, .2, , .05, , , , .4, , , , , , , 3];
+const COMMERICAL_DOOR = [.05, 0, 800, , .7, , 1, , , , -120, .4, , , , , .8];
 
 /**
  * @param {number} i The index of the tool, used to refer to it in all code
@@ -112,7 +112,7 @@ const MKTOOL = (i, c, s, v) => {
   r.id = n;
   r.textContent = c;
   r.style[s] = v;
-  r.addEventListener("click", () => chtool(i));
+  r.addEventListener("click", () => { if (!demo()) chtool(i); });
   return r;
 };
 // The unchanging array of tools supported by the game.
@@ -622,7 +622,22 @@ let map = {};
 // UI states should be able to change every frame, even with sim paused
 // * gtime: Remember "Graphics produces time, physics consumes it" (in bite-sized chunks)
 /**
- * @type {{fov:number,cam_x:number,cam_y:number,cam_fwd:number,cam_rgt:number,gtime:number,mouseX:number?,mouseY:number?,locksel:boolean,hovered_bldg:number,selected_bldg:number?,drag:null|{x:number,y:number}}} The UI state of the game
+ * @type {{
+ * fov:number,
+ * cam_x:number,
+ * cam_y:number,
+ * cam_fwd:number,
+ * cam_rgt:number,
+ * gtime:number,
+ * mouseX:number?,
+ * mouseY:number?,
+ * locksel:boolean,
+ * hovered_bldg:number,
+ * selected_bldg:number?,
+ * bldg_vis:number?,
+ * have_built:boolean,
+ * drag:null|{x:number,y:number}
+ * }} The UI state of the game
  * - fov: The field of view in degrees
  * - cam_x: The camera's X position
  * - cam_y: The camera's Y position
@@ -634,6 +649,7 @@ let map = {};
  * - locksel: Whether to lock the selection to the hovered building this frame
  * - hovered_bldg: The ID of the building the mouse is hovering over
  * - selected_bldg: The ID of the building the user has selected, if any
+ * - tool_sels: How many times we have changed tools, total (used to count clicks to switch building rotations)
  * - have_built: Whether the user has built anything this frame
  * - drag: The drag state of the mouse
  */
@@ -649,6 +665,7 @@ const ui = {
   locksel: false,
   hovered_bldg: -1,
   selected_bldg: null,
+  tool_sels: 0,
   have_built: false,
   drag: null,
 };
@@ -689,6 +706,7 @@ const city = {
  * @param {number} i 
  */
 const chtool = i => {
+  ui.tool_sels += 1;
   [...LPANE.children].forEach(c => c.className = "");
   (document.getElementById(`TOOL${i ?? O}`) ?? {}).className = "s";
 };
@@ -811,9 +829,13 @@ const kd = (...args) => {
 
 /**
  * Plays a sound effect using the zzfx library.
- * @param {Array<number|undfeined>} args 
+ * @param {Array<number|undfeined>} args The zzfx sound effect arguments
+ * @param {number} vmul A volume multiplier for the sound effect
  */
-const s = args => {
+const s = (args, vmul) => {
+  args = [...args];
+  if (vmul) args[0] *= vmul;
+  args[0] *= (.5 + .5 * (!demo()));
   if (SND_EL.checked) zzfx(...args);
 };
 
@@ -1066,69 +1088,67 @@ const can_see = (n) => n != N && n != N * N && n != N * N * N && n != N * N * N 
 
 /**
  * Answers whether we're allowed to place a new story on a given tile.
- * @param {number} idx Index of the tile
+ * @param {number} i Index of the tile
  * @param {number?} typ Type of building
  * @param {number?} vis Visual data of the tile
  * @returns {boolean}
  */
-const can_place_story = (idx, typ, vis) => {
+const can_place_story = (i, typ, vis) => {
   // Unpack the tile data
-  let height = city.info[3 * idx];
-  typ = typ || city.info[3 * idx + 1]; // Use the passed type or the tile's type if none is passed
-  vis = vis || city.info[3 * idx + 2]; // Use the passed visual data or the tile's visual data if none is passed
+  let height = city.info[3 * i];
+  typ = typ || city.info[3 * i + 1]; // Use the passed type or the tile's type if none is passed
+  vis = vis || city.info[3 * i + 2]; // Use the passed visual data or the tile's visual data if none is passed
   let building = height != Math.ceil(height); // Check if we're already under construction here
   return (
     height < MAXHT // Check if we're not already at the max height
     && !building // Check if we're not already under construction
     && can_see(city.stats.stories + vtc(vis)) // Check if we're not going to hit THAT NUMBER in the stories count
     && can_see(city.stats.typs[typ]?.stories + vtc(vis)) // Check if we're not going to hit THAT NUMBER in the type's stories count
-    && (!(vis & 1) || city.info[3 * idx + 4] === 0) // If we're a double in X, check if the next tile over is empty
-    && (!(vis & 2) || city.info[3 * (idx + map.sidel) + 1] === 0) // If we're a double in Y, check if the next tile down is empty
-    && (!(vis == 3) || city.info[3 * (idx + map.sidel) + 4] === 0) // If we're a quad, check if the next tile down and over is empty
-    && city.info[3 * idx + 2] >= 0 // Check that our visual information isn't erased
+    && (!(vis & 1) || city.info[3 * i + 4] === 0) // If we're a double in X, check if the next tile over is empty
+    && (!(vis & 2) || city.info[3 * (i + map.sidel) + 1] === 0) // If we're a double in Y, check if the next tile down is empty
+    && (!(vis == 3) || city.info[3 * (i + map.sidel) + 4] === 0) // If we're a quad, check if the next tile down and over is empty
+    && city.info[3 * i + 2] >= 0 // Check that our visual information isn't erased
   );
 };
 
 /**
  * Answers whether we're allowed to place a new building on a given tile.
- * @param {number} idx Index of the tile
+ * @param {number} i Index of the tile
  * @param {number} typ Type of building
  * @param {number} vis Visual data of the tile
  * @returns {boolean}
  */
-const can_place = (idx, typ, vis) => {
+const can_place = (i, typ, vis) => {
   const t = city.stats.typs[typ];
   return (
-    can_place_story(idx, typ, vis) // Check if we can place a story here (see above checks)
+    can_place_story(i, typ, vis) // Check if we can place a story here (see above checks)
     && can_see(city.stats.buildings + vtc(vis)) // Check if we're not going to hit THAT NUMBER in the buildings count
     && can_see(city.stats.size[vtc(vis)] + 1) // Check if we're not going to hit THAT NUMBER in the size count
     && can_see(t.buildings + vtc(vis)) // Check if we're not going to hit THAT NUMBER in the type's buildings count
     && can_see(t.size[vtc(vis)] + 1) // Check if we're not going to hit THAT NUMBER in the type's size count
-    && (!(vis & 1) || (idx + 1) % map.sidel > 0) // If we're a double in X, check if the next tile over is in bounds
-    && (!(vis & 1) || city.info[3 * idx + 5] === 0) // If we're a double in X, check if the next tile over is empty
-    && (!(vis & 2) || city.info[3 * (idx + map.sidel) + 2] === 0) // If we're a double in Y, check if the next tile down is empty
-    && (!(vis == 3) || city.info[3 * (idx + map.sidel) + 5] === 0) // If we're a quad, check if the next tile down and over is empty
+    && (!(vis & 1) || (i + 1) % map.sidel > 0) // If we're a double in X, check if the next tile over is in bounds
+    && (!(vis & 1) || city.info[3 * i + 5] === 0) // If we're a double in X, check if the next tile over is empty
+    && (!(vis & 2) || city.info[3 * (i + map.sidel) + 2] === 0) // If we're a double in Y, check if the next tile down is empty
+    && (!(vis == 3) || city.info[3 * (i + map.sidel) + 5] === 0) // If we're a quad, check if the next tile down and over is empty
   );
 };
 
 /**
  * Answers whether we're allowed to delete a building on a given tile.
- * @param {number} idx Index of the tile
+ * @param {number} i Index of the tile
  * @returns {boolean}
  */
-const can_delete = (idx) => {
-  // TODO: FIXME
-  return false;
-  const typ = city.info[3 * idx + 1];
-  const height = Math.ceil(city.info[3 * idx]);
+const can_delete = (i) => {
+  const height = Math.ceil(city.info[3 * i]);
+  const typ = city.info[3 * i + 1];
+  const vis = city.info[3 * i + 2];
   return (
-    can_see(city.stats.stories - vtc(vis) * height)
+    height > 0
+    && can_see(city.stats.stories - vtc(vis) * height)
     && can_see(city.stats.buildings - vtc(vis))
     && can_see(city.stats.typs[typ]?.stories - vtc(vis) * height)
     && can_see(city.stats.typs[typ]?.buildings - vtc(vis))
     && can_see(city.stats.typs[typ]?.size[vtc(vis)] - 1)
-    && (!(vis & 1) || (idx + 1) % map.sidel > 0)
-    && (!(vis & 2) || idx < map.sidel * map.sidel - 1)
   );
 };
 
@@ -1143,10 +1163,10 @@ const can = () => {
     (t == 0 && can_delete(i)) // Can we delete here?
     || (t == 1 && city.info[3 * i] > 0 && can_place_story(i)) // If there's a building, can we add a story?
     || (t == 2 && city.info[3 * i] <= 0 && can_place(i, 1, 0)) // Can we add a single residential here?
-    || (t == 3 && city.info[3 * i] <= 0 && can_place(i, 1, 1 + ui.v)) // Can we add a double residential here?
+    || (t == 3 && city.info[3 * i] <= 0 && can_place(i, 1, 2 - ui.tool_sels % 2)) // Can we add a double residential here?
     || (t == 4 && city.info[3 * i] <= 0 && can_place(i, 1, 3)) // Can we add a quad residential here?
     || (t == 5 && city.info[3 * i] <= 0 && can_place(i, 2, 0)) // Can we add a single commercial here?
-    || (t == 6 && city.info[3 * i] <= 0 && can_place(i, 2, 1 + ui.v)) // Can we add a double commercial here?
+    || (t == 6 && city.info[3 * i] <= 0 && can_place(i, 2, 2 - ui.tool_sels % 2)) // Can we add a double commercial here?
     || (t == 7 && city.info[3 * i] <= 0 && can_place(i, 2, 3)) // Can we add a quad commercial here?
   );
 };
@@ -1164,6 +1184,31 @@ const place = (i, typ, vis) => {
   city.info[3 * i + 2] = vis; // Set the visual data
   city.info[3 * i + 1] = typ; // Set the type
   city.info[3 * i] += .05; // Start construction
+  s([BUILD_SND, COMMERICAL_DOOR][typ - 1]); // Play the build sound
+};
+
+/**
+ * Places a new story on a given tile.
+ * @param {number} i The index of the tile
+ */
+const place_story = (i) => {
+  city.info[3 * i] += .05; // Add a story
+  s(BUILD_SND); // Play the story sound -- for now just the build sound
+};
+
+/**
+ * Erases a building from a given tile.
+ * @param {number} i The index of the tile
+ */
+const do_delete = (i) => {
+  const vis = city.info[3 * i + 2]; // Get the visual data
+  city.info[3 * i] = 0; // Set the height to 0
+  city.info[3 * i + 1] = 0; // Set the type to 0
+  city.info[3 * i + 2] = 0; // Set the visual data to 0
+  if (vis & 1) city.info[3 * i + 5] = 0; // If we're a double in X, mark the next tile over as buildable
+  if (vis & 2) city.info[3 * (i + map.sidel) + 2] = 0; // If we're a double in Y, mark the next tile down as buildable
+  if (vis == 3) city.info[3 * (i + map.sidel) + 5] = 0; // If we're a quad, mark the next tile down and over as buildable
+  s(BULLDOZE_SND); // Play the bulldoze sound
 };
 
 /**
@@ -1177,10 +1222,10 @@ const conf = () => {
   if (t == 0) do_delete(ui.selected_bldg); // If we're deleting, delete
   if (t == 1) city.info[3 * ui.selected_bldg] += .05; // If we're adding a story, add a story
   if (t == 2) place(ui.selected_bldg, 1, 0); // If we're adding a single residential, add a single residential
-  if (t == 3) place(ui.selected_bldg, 1, 1 + ui.v); // If we're adding a double residential, add a double residential
+  if (t == 3) place(ui.selected_bldg, 1, 2 - ui.tool_sels % 2); // If we're adding a double residential, add a double residential
   if (t == 4) place(ui.selected_bldg, 1, 3); // If we're adding a quad residential, add a quad residential
   if (t == 5) place(ui.selected_bldg, 2, 0); // If we're adding a single commercial, add a single commercial
-  if (t == 6) place(ui.selected_bldg, 2, 1 + ui.v); // If we're adding a double commercial, add a double commercial
+  if (t == 6) place(ui.selected_bldg, 2, 2 - ui.tool_sels % 2); // If we're adding a double commercial, add a double commercial
   if (t == 7) place(ui.selected_bldg, 2, 3); // If we're adding a quad commercial, add a quad commercial
 };
 
@@ -1244,7 +1289,7 @@ const system_frame = (dt) => {
   if (kd('a', 'arrowleft')) ui.cam_rgt -= s;
   if (kd('s', 'arrowdown')) ui.cam_fwd -= s;
   if (kd('d', 'arrowright')) ui.cam_rgt += s;
-  if (kd('e')) conf(); // Confirm the current action
+  if (kd('e') && !demo()) conf(); // Confirm the current action
   // Update the camera position based on accumulated movement
   ui.cam_x = Math.max(Math.min(ui.cam_x + ui.cam_fwd - ui.cam_rgt, map.sidel), 0.);
   ui.cam_y = Math.max(Math.min(ui.cam_y + ui.cam_fwd + ui.cam_rgt, map.sidel), 0.);
@@ -1317,7 +1362,7 @@ const fill_levelselect = () => {
  */
 const mmovpos = e => {
   e.preventDefault(); // Prevent the default action if we can
-  if (!gl) return; // If we don't have a WebGL context, don't do anything
+  if (!gl || demo()) return; // If we don't have a WebGL context, or we're in demo mode, don't do anything
   const r = CV.getBoundingClientRect(); // Get the bounding rectangle of the canvas
   const newx = (e.clientX - r.left) * gl.canvas.width / r.width; // Calculate the new X position of the mouse as pixels on the canvas
   const newy = gl.canvas.height * (1 - (e.clientY - r.top) / r.height) - 1; // Calculate the new Y position of the mouse as pixels on the canvas
@@ -1376,11 +1421,11 @@ ael(document, 'keyup', e => {
 });
 
 // For certain elements, add mouseover and mousedown sounds
-ael(SND_EL, "change", () => s(SELECT_SND2)); // Mute/unmute sound
+ael(SND_EL, "change", () => s(SELECT_SND)); // Mute/unmute sound
 ael(SND_EL, 'mouseenter', () => s(MO_SND)); // Mute/unmute mouseover sound
 for (let b of [CBTN, DBTN, PBTN, ...TOOLS]) {
   ael(b, 'mouseenter', e => { if (!e.target.disabled) s(MO_SND); }); // Play the mouseover sound when the mouse enters a button
-  ael(b, 'mousedown', e => { if (!e.target.disabled) s(SELECT_SND2); }); // Play the mousedown sound when the mouse clicks a button
+  ael(b, 'mousedown', e => { if (!e.target.disabled) s(SELECT_SND); }); // Play the mousedown sound when the mouse clicks a button
 }
 
 // =================
@@ -1391,7 +1436,7 @@ for (let b of [CBTN, DBTN, PBTN, ...TOOLS]) {
 PBTN.addEventListener('close', (e) => {
   load_builtin_map('canvas', 2); // Load an example level
   setdemo(true); // Place the game in demo mode (like old games.)
-  LVLSELWIN.showModal(); // Show the level select window
+  LVLSELWIN.show(); // Show the level select window
   init_gl(); // Get the WebGL context
   rafId = requestAnimationFrame(draw); // Start the render loop
 });
