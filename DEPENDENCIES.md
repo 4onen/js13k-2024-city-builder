@@ -9,8 +9,8 @@ into the project under the MIT license:
 * [Zzfx](https://github.com/KilledByAPixel/ZzFX)
   * Provides sound effects for the game - hover, click, building placement, etc.
   * Version: e5390764053cf24c56e9d8f82c842345691d16d2/ZzFXMicro.min.js
-* [ZzfxM](https://github.com/keithclark/ZzFXM)
-  * Provides a music engine for the game on top of Zzfx.
+* ~~[ZzfxM](https://github.com/keithclark/ZzFXM)~~
+  * ~~Provides a music engine for the game on top of Zzfx.~~ Whoops! Music got scrapped. Leaving the link anyway, for y'all to have access to this wonderful li'l library.
   * Version: cb07fa9ca36aefd67a0c8c656d2958b62f8ed9fe/zzfxm.min.js
 
 ## Build time
