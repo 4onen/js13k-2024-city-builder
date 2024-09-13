@@ -1140,7 +1140,7 @@ const recalc_city_stats = () => {
  * @param {number} n
  * @returns {boolean}
  */
-const can_see = (n) => n != N && n != N * N && n != N * N * N && n != N * N * N * N && n != N * N * N * N * N;
+const can_see = (n) => n != 0 && n % N != 0;
 
 
 /**
