@@ -85,6 +85,8 @@ const BMAPS = {
     { name: "qd", sidel: 3, dat: "F000F0000000F00000" },
   ],
   canvas: [
+    { name: "3x3", sidel: 3 },
+    { name: "5x5", sidel: 5 },
     { name: "7x7", sidel: 7 },
     { name: "9x9", sidel: 9 },
     { name: "11x11", sidel: 11 },
@@ -112,7 +114,7 @@ const MKTOOL = (i, c, s, v) => {
   r.id = n;
   r.textContent = c;
   r.style[s] = v;
-  r.addEventListener("click", () => { if (!demo()) chtool(i); });
+  r.addEventListener("click", e => { if (!demo()) chtool(i); });
   return r;
 };
 // The unchanging array of tools supported by the game.
@@ -508,6 +510,10 @@ const LVLSELWIN = document.getElementById('lvlselectwin');
  * @type {HTMLDivElement} The level select dialog's content element
  */
 const LVLSEL = document.getElementById('lvlselect');
+/**
+ * @type {HTMLButtonElement} The button to open the level select mid-game
+ */
+const LVLBTN = document.getElementById('lvlselectopen');
 /**
  * @type {HTMLDialogElement} The game play button, to force an interact event
  *                           b4 playing music or sound or anything.
@@ -959,7 +965,7 @@ const init_gl = () => {
 const set_unifs = (p) => {
   gl.useProgram(p.p); // Tell WebGL we're talking about this program
   gl.uniform1i(p.unifs.sidel, map.sidel); // Send the sidelength of the map to the GPU
-  gl.uniform1i(p.unifs.selected_bldg, ui.selected_bldg !== null ? ui.selected_bldg : ui.hovered_bldg); // Send the selected building ID to the GPU
+  gl.uniform1i(p.unifs.selected_bldg, ui.selected_bldg !== null ? ui.selected_bldg : (demo() ? -1 : ui.hovered_bldg)); // Send the selected building ID to the GPU
   gl.uniform3fv(p.unifs.selcol, [[.5, .5, .5], [1, 0, 0], [0, 1, gtool() == 0]][(gtool() >= 0) + can()]); // Send the selection color to the GPU
   gl.uniform2f(p.unifs.woff, ui.cam_x, ui.cam_y); // Send the camera offset to the GPU
   const s = Math.SQRT1_2; // Load the square root of 1/2 into a variable to use over and over again
@@ -1015,7 +1021,7 @@ const draw = (t) => {
     // Set the hovered building to the tile ID we read back
     ui.hovered_bldg = d[0];
   }
-  if (ui.locksel) { // If we're locking the selection to the hovered building
+  if (!demo() && ui.locksel) { // If we're locking the selection to the hovered building
     ui.locksel = false; // Update that we've done this now
     ui.selected_bldg = ui.hovered_bldg >= 0 ? ui.hovered_bldg : null; // Set the selected building to the hovered building if it's valid
     if (ui.selected_bldg != null) s(MO_SND); // Play the mouseover sound if we've selected a valid building
@@ -1343,13 +1349,27 @@ const system_loop = () => {
 const fill_levelselect = () => {
   // At the top level, drop the game's header
   // From the BMAPS object
-  for (const [k, v] of Object.entries(BMAPS)) {
+  const sections = Object.entries(BMAPS).map(([k, v]) => {
     // We want to present a nice UI, so we use buttons in sections with
     // headings for each level category.
     const sec = document.createElement('section'); // Create a new section element
-    document.createElement('h2'); // Create a new heading element
-    sec.appendChild(document.createTextNode(k)); // Set the text of the heading to the category name
-  }
+    const h = document.createElement('h2'); // Create a new heading element
+    h.appendChild(document.createTextNode(k)); // Set the text of the heading to the category name
+    // Generate a button for each level in the category
+    const btns = v.map((l, i) => {
+      const b = document.createElement('button'); // Create a new button element
+      b.appendChild(document.createTextNode(l.name)); // Set the text of the button to the level name
+      ael(b, 'click', e => {
+        load_builtin_map(k, i); // Load the level
+        setdemo(false); // Take the game out of demo mode
+        LVLSELWIN.close();
+      }); // When the button is clicked, load the level
+      return b; // Return the button
+    });
+    sec.replaceChildren(h, ...btns); // Fill the section with the heading and buttons
+    return sec;
+  });
+  LVLSEL.replaceChildren(...sections); // Fill the level select window with the sections
 };
 
 // ============================
@@ -1362,7 +1382,7 @@ const fill_levelselect = () => {
  */
 const mmovpos = e => {
   e.preventDefault(); // Prevent the default action if we can
-  if (!gl || demo()) return; // If we don't have a WebGL context, or we're in demo mode, don't do anything
+  if (!gl) return; // If we don't have a WebGL context, or we're in demo mode, don't do anything
   const r = CV.getBoundingClientRect(); // Get the bounding rectangle of the canvas
   const newx = (e.clientX - r.left) * gl.canvas.width / r.width; // Calculate the new X position of the mouse as pixels on the canvas
   const newy = gl.canvas.height * (1 - (e.clientY - r.top) / r.height) - 1; // Calculate the new Y position of the mouse as pixels on the canvas
@@ -1400,7 +1420,7 @@ ael(CV, "pointerup", e => {
 ael(CBTN, 'click', conf);
 
 // If the player pushes the deny button, unlock the selection
-ael(DBTN, 'click', () => ui.selected_bldg = null);
+ael(DBTN, 'click', e => { ui.selected_bldg = null; chtool(-1); });
 
 // If we lose the context, warn and stop the render loop
 ael(window, 'webglcontextlost', e => {
@@ -1421,22 +1441,31 @@ ael(document, 'keyup', e => {
 });
 
 // For certain elements, add mouseover and mousedown sounds
-ael(SND_EL, "change", () => s(SELECT_SND)); // Mute/unmute sound
-ael(SND_EL, 'mouseenter', () => s(MO_SND)); // Mute/unmute mouseover sound
+ael(SND_EL, "change", e => s(SELECT_SND)); // Mute/unmute sound
+ael(SND_EL, 'mouseenter', e => s(MO_SND)); // Mute/unmute mouseover sound
 for (let b of [CBTN, DBTN, PBTN, ...TOOLS]) {
   ael(b, 'mouseenter', e => { if (!e.target.disabled) s(MO_SND); }); // Play the mouseover sound when the mouse enters a button
   ael(b, 'mousedown', e => { if (!e.target.disabled) s(SELECT_SND); }); // Play the mousedown sound when the mouse clicks a button
 }
+ael(LVLBTN, 'click', e => {
+  if (LVLSELWIN.open && !demo()) {
+    LVLSELWIN.close();
+  } else {
+    fill_levelselect();
+    LVLSELWIN.show();
+  }
+});
 
 // =================
 // ==== RUNTIME ====
 // =================
 
 // When the user clicks the play button
-PBTN.addEventListener('click', (e) => {
+ael(PBTN, 'click', e => {
   load_builtin_map('canvas', 2); // Load an example level
   setdemo(true); // Place the game in demo mode (like old games.)
-  LVLSELWIN.show(); // Show the level select window
+  LVLBTN.click();
+  LVLBTN.style.display = 'block';
   init_gl(); // Get the WebGL context
   rafId = requestAnimationFrame(draw); // Start the render loop
 });

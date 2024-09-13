@@ -30,20 +30,11 @@
         }
 
         button {
-            font-size: 3em;
+            font-size: 2.5em;
             border-radius: 1em;
             height: 2em;
-            width: 2em;
             position: relative;
-        }
-
-        dialog {
-            position: absolute;
-            top: 30%;
-            left: 5%;
-            border-radius: 1em;
-            padding-inline: 1em;
-            border: 2px outset;
+            cursor: pointer;
         }
 
         footer {
@@ -69,23 +60,21 @@
         }
 
         #playdialog {
-            /* While I use a dialog element here, that's just to make sure
-            it's a popover. I'm actually using it as a button. */
             display: block;
             position: absolute;
             background-color: limegreen;
             margin: auto;
-            width: 8em;
+            width: 4em;
             font-size: 4em;
             top: 50%;
-            left: calc(50% - 4em);
-            cursor: pointer;
+            left: calc(50% - 2em);
         }
 
         #snd {
             /* The sound checkbox -- hidden to let us make it pretty with emoji. */
             appearance: none;
             font-size: 3em;
+            cursor: pointer;
         }
 
         #snd::before {
@@ -108,6 +97,7 @@
             background-color: Canvas;
 
             button {
+                width: 2em;
                 color: limegreen;
             }
         }
@@ -146,6 +136,39 @@
             }
         }
 
+        #lvlselectopen {
+            /* The level select button. */
+            position: absolute;
+            aspect-ratio: .7;
+            border-top-left-radius: 0;
+            top: 0;
+            left: 0;
+        }
+
+        #lvlselectwin {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            border-radius: 1em;
+            border-bottom-left-radius: 0;
+            padding-inline: 1em;
+            border: 2px outset;
+
+            * {
+                padding-block-start: .5em;
+            }
+
+            h2 {
+                font-size: 2em;
+                border-bottom: 1px solid;
+            }
+
+            button {
+                min-width: 3em;
+                font-size: 2em;
+            }
+        }
+
         .s {
             /* Selected UI element. */
             border-color: yellow;
@@ -177,6 +200,7 @@
                 target="_blank">ZzFX🔊</a> by KilledByAPixel - MIT License
         </footer>
     </dialog>
+    <button id="lvlselectopen" title="Menu" style="display:none">☰</button>
     <button id="playdialog" onclick="this.style.display='none'">Play</button>
 </body>
 
