@@ -96,7 +96,7 @@ const BMAPS = {
     { name: "7x7", sidel: 7 },
     { name: "9x9", sidel: 9 },
     { name: "11x11", sidel: 11 },
-    { name: "absurd", sidel: 127 },
+    { name: "absurd", sidel: 64 },
   ]
 };
 
@@ -116,11 +116,11 @@ const COMMERICAL_DOOR = [.03, 0, 700, , .7, , 1, , , , -120, .4, , , , , .8];
  */
 const MKTOOL = (i, c, s, v) => {
   const r = document.createElement("button");
-  const n = `TOOL${i}`;
-  r.id = n;
-  r.textContent = c;
-  r.style[s] = v;
-  r.addEventListener("click", e => { if (!demo()) chtool(i); });
+  r.id = `TOOL${i}`; // Set the ID of the button so we can refer to it
+  r.dataset.k = i; // Set the keycode display for the button
+  r.textContent = c; // Set the content of the button
+  r.style[s] = v; // Set the style parameter if it's provided
+  r.addEventListener("click", e => chtool(i));
   return r;
 };
 // The unchanging array of tools supported by the game.
@@ -275,7 +275,7 @@ uniform vec2 woff; // The world offset of the camera
 uniform mat4 w2v; // The world-to-view transformation matrix that converts world space to view space
 uniform mat4 v2c; // The view-to-clip transformation matrix that converts view space to clip space
 uniform int selected_bldg; // The ID of the selected building (if any)
-uniform vec3 selcol; // The selection color
+uniform vec4 selcol; // The selection color & visual appearance override
 
 // This random function is a modified version of the one you'll see all over
 // ShaderToy. It's a simple hash function that takes a 2D vector and returns
@@ -307,12 +307,13 @@ float sidelf=float(sidel); // Convert the sidelength to a float for calc.
 
 // Here, we unpack the instance data into the development, tile type, and
 // visual appearance. Vis is the toughest one, as it's highly nonlinear.
+float vis = selected_bldg==tid ? selcol.a : i.z;
 // First, we need to decide if we're doing a double tile or not, and if so
 // in which directions. I'd do this bitwise, but I don't trust integer math
 // on the GPU now, so instead I need to modulo the instance ID by 2 and add
 // 1 to get the x direction size. For the z direction size, it becomes 2 as
 // soon as vis is greater than or equal to 2, so that's an easy step function.
-vec2 dbl = vec2(mod(i.z,2.)+1.,1.+step(2.,i.z));
+vec2 dbl = vec2(mod(vis,2.)+1.,1.+step(2.,vis));
 // This "double" vector is the stretching of the tile in the x and z directions
 // but we need to stretch it from one corner. The tiles as defined in the model
 // are centered on the origin, so to do the stretch and shift them over, we
@@ -325,7 +326,7 @@ vec2 dblp = (mp.xz-.5)*dbl+1.;
 // model positions and the original model y position. We also have another
 // check against the vis value to decide if the tile should be deleted (vis=-1)
 // or if it should exist (vis>=0).
-wp=vec3(dblp.x,mp.y,dblp.y)*step(-0.5,i.z);
+wp=vec3(dblp.x,mp.y,dblp.y)*step(-0.5,vis);
 
 const float eps = .0002; // This is the aforementioned epsilon to fix the
                          // Intel UHD 630 math. It's a tiny value that's
@@ -351,7 +352,7 @@ wp.y*=.1*random(wp.xz)+.5*i.x;
 // a base, but if we're the selected building and the selection color is
 // green, we add one story to the building. This is visual feedback for
 // users clicking around what their tool is planning to do.
-development=i.x+float(selected_bldg==tid&&selcol==vec3(0.,1.,0.));
+development=i.x+float(selected_bldg==tid&&selcol.rgb==vec3(0.,1.,0.));
 // Here we just pass along the tile type to the fragment shader.
 ttyp=int(i.y);
 // Then, finally, we transform our world position through view space to
@@ -394,7 +395,7 @@ layout(location=1) out int outTid; // The ID of the tile at the fragment
 // much information as the vertex shader -- just the ID of the selected
 // building and the selection color.
 uniform int selected_bldg;
-uniform vec3 selcol;
+uniform vec4 selcol;
 
 // This is the random function, same as the one in the vertex shader.
 float random(vec2 st){return fract(sin(dot(st.xy,vec2(12.9898,78.233)))*43.5453123);}
@@ -472,7 +473,7 @@ col=mix(grasscol,col,smoothstep(0.01,0.05,storey-0.07*n));
 col*=1.-.1*(development/(1.+2.*mp.y))*smoothstep(-.5,-.4,-sd-.01*n);
 
 // If this is the selected building, mix the selection color in over top.
-col=mix(col,selcol,selected_bldg==tid?.5:0.);
+col=mix(col,selcol.rgb,selected_bldg==tid?.5:0.);
 
 // Return our calculated color and the tile ID.
 outColor=vec4(col,1.);
@@ -979,8 +980,14 @@ const init_gl = () => {
 const set_unifs = (p) => {
   gl.useProgram(p.p); // Tell WebGL we're talking about this program
   gl.uniform1i(p.unifs.sidel, map.sidel); // Send the sidelength of the map to the GPU
-  gl.uniform1i(p.unifs.selected_bldg, ui.selected_bldg !== null ? ui.selected_bldg : (demo() ? -1 : ui.hovered_bldg)); // Send the selected building ID to the GPU
-  gl.uniform3fv(p.unifs.selcol, [[.5, .5, .5], [1, 0, 0], [0, 1, gtool() == 0]][(gtool() >= 0) + can()]); // Send the selection color to the GPU
+  const selid = ui.selected_bldg !== null ? ui.selected_bldg : (demo() ? -1 : ui.hovered_bldg);
+  gl.uniform1i(p.unifs.selected_bldg, selid); // Send the selected building ID to the GPU
+  let selvis = city.info[3 * selid + 2];
+  if (gtool() == 3) selvis = 2 - ui.tool_sels % 2;
+  if (gtool() == 6) selvis = 2 - ui.tool_sels % 2;
+  if (gtool() == 4) selvis = 3;
+  if (gtool() == 7) selvis = 3;
+  gl.uniform4fv(p.unifs.selcol, [[.5, .5, .5, selvis], [1, 0, 0, selvis], [0, 1, gtool() == 0, selvis]][(gtool() >= 0) + can()]); // Send the selection color to the GPU
   gl.uniform2f(p.unifs.woff, ui.cam_x, ui.cam_y); // Send the camera offset to the GPU
   const s = Math.SQRT1_2; // Load the square root of 1/2 into a variable to use over and over again
   // Load my manually-calculated world-to-view and view-to-clip matrices into the GPU
@@ -1083,12 +1090,12 @@ const recalc_city_stats = () => {
     const typ = city.info[3 * i + 1]; // We're going to every packed group of 3 and pulling out its middle entry -- that's the type.
     const tiles = vtc(city.info[3 * i + 2]); // We're going to every packed group of 3 and pulling out its last entry -- that's the visual data -- then we're going to convert that to a tile count.
     t.buildings += (typ > 0) * tiles; // If the type is greater than 0, there's a building here, so add the tiles to the building count.
-    t.stories += height * tiles; // Add the height times the tiles to the stories count.
+    t.stories += Math.max(0, height) * tiles; // Add the height times the tiles to the stories count.
     t.size[tiles] += typ > 0; // If the type is greater than 0, add 1 to the size count for that size.
     if (typ > 0) {
       let s = typs[typ]; // Get the type stats object for this type
       s.buildings += (typ > 0) * tiles; // See above for these.
-      s.stories += height * tiles;
+      s.stories += Math.max(0, height) * tiles;
       s.size[tiles] += typ > 0;
     }
   }
