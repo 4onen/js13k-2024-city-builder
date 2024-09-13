@@ -1361,6 +1361,7 @@ const system_frame = (dt) => {
 const keydown = () => {
   // Change-tool controls
   if (kd(';') && !LVLSELWIN.open) setdemo(!demo()); // Toggle demo mode
+  if (kd('q')) ui.tool_sels += 1; // Cycle the tool selection count to trigger rotating buildings.
   if (kd('`')) chtool(0);
   if (kd('0')) chtool(0);
   if (kd('1')) chtool(1);
