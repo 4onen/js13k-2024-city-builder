@@ -88,7 +88,9 @@ const BMAPS = {
   puzzle: [
     { name: "kpd", sidel: 3, tools: [0, 1, 5, 6] },
     { name: "escr", sidel: 5, dat: "000000000000F0F0F00000F0F0F00000F0F0F0000000000000", tools: [0, 1, 2, 6] },
-    { name: "heart", sidel: 5, dat: "00000000F00000000000000000000000000000F0F00000", tools: [0, 1, 2, 3, 4] },
+    { name: "hart", sidel: 5, dat: "00000000F00000000000000000000000000000F0F00000", tools: [0, 1, 2, 3, 4] },
+    { name: "stlk", sidel: 7, dat: "F0F000F000F00000000000000000F000F000F000", tools: [0, 1, 2, 3, 5, 6] },
+    { name: "chkr", sidel: 8, dat: "00F000F000F000F0F000F000F000F00000F000F000F000F0F000F000F000F00000F000F000F000F0F000F000F000F00000F000F000F00000F000F000F0000000", tools: [0, 1, 2, 3, 5, 6] },
   ],
   canvas: [
     { name: "3x3", sidel: 3 },
