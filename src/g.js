@@ -79,18 +79,18 @@ const MAXHT = 4;
  */
 const BMAPS = {
   tut: [
-    { name: "up", sidel: 1, tools: [1, 2] },
-    { name: "dbl", sidel: 2, dat: "000000", tools: [0, 3] },
-    { name: "crs", sidel: 3, dat: "F000F0000000F000F0", tools: [0, 1, 2, 3] },
-    { name: "qd", sidel: 3, dat: "F000F0000000F00000", tools: [0, 1, 2, 4] },
-    { name: "lim", sidel: 5, dat: "141414141414141414141414000000000000", tools: [0, 2, 6] }
+    { name: "up", sidel: 1, tools: [1, 2] }, // Upward
+    { name: "dbl", sidel: 2, dat: "000000", tools: [0, 3] }, // Double
+    { name: "crs", sidel: 3, dat: "F000F0000000F000F0", tools: [0, 1, 2, 3] }, // Cross
+    { name: "qd", sidel: 3, dat: "F000F0000000F00000", tools: [0, 1, 2, 4] }, // Quad
+    { name: "lim", sidel: 5, dat: "141414141414141414141414000000000000", tools: [0, 2, 6] } // Limit
   ],
   puzzle: [
-    { name: "kpd", sidel: 3, tools: [0, 1, 5, 6] },
-    { name: "escr", sidel: 5, dat: "000000000000F0F0F00000F0F0F00000F0F0F0000000000000", tools: [0, 1, 2, 6] },
-    { name: "hart", sidel: 5, dat: "00000000F00000000000000000000000000000F0F00000", tools: [0, 1, 2, 3, 4] },
-    { name: "stlk", sidel: 7, dat: "F0F000F000F00000000000000000F000F000F000", tools: [0, 1, 2, 3, 5, 6] },
-    { name: "chkr", sidel: 8, dat: "00F000F000F000F0F000F000F000F00000F000F000F000F0F000F000F000F00000F000F000F000F0F000F000F000F00000F000F000F00000F000F000F0000000", tools: [0, 1, 2, 3, 5, 6] },
+    { name: "kpd", sidel: 3, tools: [0, 1, 5, 6] }, // Keypad
+    { name: "escr", sidel: 5, dat: "000000000000F0F0F00000F0F0F00000F0F0F0000000000000", tools: [0, 1, 2, 6] }, // Escher
+    { name: "hart", sidel: 5, dat: "00000000F00000000000000000000000000000F0F00000", tools: [0, 1, 2, 3, 4] }, // Heart
+    { name: "stlk", sidel: 7, dat: "F0F000F000F00000000000000000F000F000F000", tools: [0, 1, 2, 3, 5, 6] }, // (Bean)stalk
+    { name: "chkr", sidel: 8, dat: "00F000F000F000F0F000F000F000F00000F000F000F000F0F000F000F000F00000F000F000F000F0F000F000F000F00000F000F000F00000F000F000F0000000" }, // Checker
   ],
   canvas: [
     { name: "3x3", sidel: 3 },
@@ -98,7 +98,7 @@ const BMAPS = {
     { name: "7x7", sidel: 7 },
     { name: "9x9", sidel: 9 },
     { name: "11x11", sidel: 11 },
-    { name: "absurd", sidel: 64 },
+    { name: "absurd", sidel: 64 }, // Had this at 256x256, but it was too slow. Then at 127x127, but mobile bugged out way too close to the origin. Now it's at 64x64, which is a good balance.
   ]
 };
 
@@ -127,14 +127,14 @@ const MKTOOL = (i, c, s, v) => {
 };
 // The unchanging array of tools supported by the game.
 const TOOLS = [
-  MKTOOL(0, "🚧"),
-  MKTOOL(1, "🏗️"),
-  MKTOOL(2, "🏠"),
-  MKTOOL(3, "🏠🏠"),
-  MKTOOL(4, "🏠🏠🏠🏠"),
-  MKTOOL(5, "🛒"),
-  MKTOOL(6, "🛒🛒"),
-  MKTOOL(7, "🛒🛒🛒🛒"),
+  MKTOOL(0, "🚧"), // Bulldozer
+  MKTOOL(1, "🏗️"), // Add-story
+  MKTOOL(2, "🏠"), // House
+  MKTOOL(3, "🏠🏠"), // Longhouse
+  MKTOOL(4, "🏠🏠🏠🏠"), // Apartment block
+  MKTOOL(5, "🛒"), // Corner store
+  MKTOOL(6, "🛒🛒"), // Mart
+  MKTOOL(7, "🛒🛒🛒🛒"), // Mall
 ];
 
 
@@ -725,9 +725,9 @@ const city = {
  * @param {number} i 
  */
 const chtool = i => {
-  ui.tool_sels += 1;
-  [...LPANE.children].forEach(c => c.className = "");
-  (document.getElementById(`TOOL${i ?? O}`) ?? {}).className = "s";
+  ui.tool_sels += 1; // Increment the tool selection counter
+  [...LPANE.children].forEach(c => c.className = ""); // Clear the selected tool
+  (document.getElementById(`TOOL${i ?? O}`) ?? {}).className = "s"; // Select the new tool
 };
 
 /**
@@ -735,8 +735,8 @@ const chtool = i => {
  * @returns {number}
  */
 const gtool = () => {
-  const i = LPANE.querySelector(".s")?.id;
-  return i ? parseInt(i.substring(4), 10) : -1;
+  const i = LPANE.querySelector(".s")?.id; // Ask for all selected tools
+  return i ? parseInt(i.substring(4), 10) : -1; // Return the first selected tool, or -1 if none was found
 };
 
 /**
@@ -744,7 +744,7 @@ const gtool = () => {
  * @returns {boolean}
  */
 const demo = () => {
-  return CD.style.display === "none";
+  return CD.style.display === "none"; // Hide the confirm/deny box to enter demo mode
 };
 
 /**
@@ -753,7 +753,8 @@ const demo = () => {
  * @returns {void}
  */
 const setdemo = (on) => {
-  CD.style.display = on ? "none" : "block";
+  CD.style.display = on ? "none" : "block"; // Show the confirm/deny box to exit demo mode
+  // Because global state is yummy.
 };
 
 
@@ -762,31 +763,32 @@ const setdemo = (on) => {
  * @param {CWTNMap} mapdat
  */
 const load_map = mapdat => {
-  map.sidel = mapdat.sidel;
-  city.info = new Float32Array(3. * map.sidel * map.sidel).fill(-1);
+  map.sidel = mapdat.sidel; // Take the sidelength of the map
+  city.info = new Float32Array(3. * map.sidel * map.sidel).fill(-1); // Create a new city info buffer and fill it with nothing
   if (!mapdat.dat) {
-    city.info.fill(0);
+    city.info.fill(0); // If we're given nothing else to put in, just fill the buffer with zeroes (Flat grassy field.)
   } else {
     for (let i = 0; i < map.sidel * map.sidel; i += 1) {
-      const hdat = parseInt(mapdat.dat[2 * i], 16);
-      if (hdat <= MAXHT) {
-        city.info[3 * i] = hdat;
-        const vdat = parseInt(mapdat.dat[2 * i + 1], 16);
-        city.info[3 * i + 1] = vdat >> 2;
-        city.info[3 * i + 2] = vdat & 3;
+      const hdat = parseInt(mapdat.dat[2 * i], 16); // Compute the height part of this tile
+      if (hdat <= MAXHT) { // If the height is within bounds
+        city.info[3 * i] = hdat; // Set the height of the tile
+        const vdat = parseInt(mapdat.dat[2 * i + 1], 16); // Parse the visual appearance of the tile
+        city.info[3 * i + 1] = vdat >> 2; // Set the type of the tile
+        city.info[3 * i + 2] = vdat & 3; // Set the visual appearance of the tile
       }
     }
   }
   if (!mapdat.tools) {
-    LPANE.replaceChildren(...TOOLS);
+    LPANE.replaceChildren(...TOOLS); // If we're given no tools, just put all the tools in the UI
   } else {
-    LPANE.replaceChildren(...TOOLS.filter((v, i) => mapdat.tools.includes(i)));
+    LPANE.replaceChildren(...TOOLS.filter((v, i) => mapdat.tools.includes(i))); // Otherwise, put only the tools we're given in the UI
   }
-  chtool(parseInt(LPANE.firstChild.id.substring(4), 10));
-  ui.selected_bldg = null;
-  ui.hovered_bldg = -1;
-  ui.cam_x = 0;
-  ui.cam_y = 0;
+  chtool(parseInt(LPANE.firstChild.id.substring(4), 10)); // Select the first tool in the UI
+  ui.selected_bldg = null; // Deselect any selected building
+  ui.hovered_bldg = -1; // Unhover any hovered building
+  // Reset the camera position
+  ui.cam_x = 1;
+  ui.cam_y = 1;
 };
 
 /**
@@ -795,7 +797,8 @@ const load_map = mapdat => {
  * @param {number} n 
  */
 const load_builtin_map = (cat, n) => {
-  load_map(BMAPS[cat][n]);
+  load_map(BMAPS[cat][n]); // Load the map
+  // Update the map we're playing on for UI elements I never got around to implementing
   map.builtin_cat = cat;
   map.builtin_num = n;
 };
@@ -805,19 +808,19 @@ const load_builtin_map = (cat, n) => {
  * @param {DOMHighResTimeStamp} timestamp
  */
 const frametime = timestamp => {
-  frame_num += 1;
-  if (last_timestamp === null) last_timestamp = timestamp;
-  const dt = timestamp - last_timestamp > 0 ? (timestamp - last_timestamp) * 0.001 : TARGET_DT;
-  if (last_fps === null) last_fps = TARGET_FPS;
-  const frames_fps_smoothing = Math.min(FRAMES_FPS_SMOOTHING, frame_num);
-  const fps = (frames_fps_smoothing * last_fps) / (dt * last_fps + frames_fps_smoothing - 1);
-  last_fps = fps;
-  time_to_fps_update -= dt;
-  if (time_to_fps_update < 0) {
-    time_to_fps_update = FPS_UPDATE_INTERVAL;
-    FPS_EL.textContent = fps.toFixed(1);
+  frame_num += 1; // Increment the frame number
+  if (last_timestamp === null) last_timestamp = timestamp; // If this is the first frame, set the last timestamp
+  const dt = timestamp - last_timestamp > 0 ? (timestamp - last_timestamp) * 0.001 : TARGET_DT; // Calculate the delta time if positive, else assume the target delta time
+  if (last_fps === null) last_fps = TARGET_FPS; // If this is the first frame, set the last FPS to our target FPS because we have no other information
+  const frames_fps_smoothing = Math.min(FRAMES_FPS_SMOOTHING, frame_num); // Calculate the number of frames to smooth the FPS over (Fast up to FRAMES_FPS_SMOOTHING, then slow)
+  const fps = (frames_fps_smoothing * last_fps) / (dt * last_fps + frames_fps_smoothing - 1); // Calculate the smoothed FPS
+  time_to_fps_update -= dt; // Subtract the delta time from the time until the next FPS update
+  if (time_to_fps_update < 0) { // If it's time to update the FPS display
+    time_to_fps_update = FPS_UPDATE_INTERVAL; // Reset the time until the next FPS update
+    FPS_EL.textContent = fps.toFixed(1); // Update the FPS display
   }
-  last_timestamp = timestamp;
+  last_fps = fps; // Update the last FPS
+  last_timestamp = timestamp; // Update the last timestamp
   return dt;
 };
 
@@ -825,10 +828,10 @@ const frametime = timestamp => {
  * Checks for WebGL error and alerts user if found.
  */
 const ec = () => {
-  if (!gl) { return; }
-  const e = gl.getError();
-  if (e !== gl.NO_ERROR && e !== gl.CONTEXT_LOST_WEBGL) {
-    alert(`Gl ${e.toString(16)}`);
+  if (!gl) { return; } // If we don't have a WebGL context, don't bother checking for errors
+  const e = gl.getError(); // Get the WebGL error code
+  if (e !== gl.NO_ERROR && e !== gl.CONTEXT_LOST_WEBGL) { // If the error isn't "no error" or "context lost"
+    alert(`Gl ${e.toString(16)}`); // Alert the user with the error code
   }
 };
 
@@ -845,7 +848,7 @@ const cl = () => !gl || gl.isContextLost();
  */
 const kd = (...args) => {
   for (const a of args)
-    if (keys.has(a))
+    if (keys.has(a)) // This is just checking if each key is in the set
       return true;
   return false;
 };
@@ -856,10 +859,11 @@ const kd = (...args) => {
  * @param {number} vmul A volume multiplier for the sound effect
  */
 const s = (args, vmul) => {
-  args = [...args];
-  if (vmul) args[0] *= vmul;
-  args[0] *= (.5 + .5 * (!demo()));
-  if (SND_EL.checked) zzfx(...args);
+  if (!SND_EL.checked) return; // If sound effects are disabled, don't play the sound effect
+  args = [...args]; // Copy the arguments
+  if (vmul) args[0] *= vmul; // Multiply the volume by the volume multiplier, if any
+  args[0] *= (.5 + .5 * (!demo())); // Make the sounds quieter in demo mode, as they're not user-initiated
+  zzfx(...args); // Play the sound effect
 };
 
 /**
@@ -872,7 +876,7 @@ const glShaderFromSrc = (typ, src) => {
   gl.shaderSource(s, src); // Send the source code over to it
   gl.compileShader(s); // Ask WebGL nicely to compile the shader
   if (!gl.getShaderParameter(s, gl.COMPILE_STATUS) && !cl()) // Check if WebGL died or the shader failed to compile
-    alert("compiling shader:\n" + gl.getShaderInfoLog(s));
+    alert("compiling shader:\n" + gl.getShaderInfoLog(s)); // Alert on failure
   return s;
 };
 
@@ -1079,7 +1083,7 @@ const recalc_city_stats = () => {
   const t = {
     buildings: 0,
     stories: 0,
-    size: [0, 0, null, 0],
+    size: [0, 0, null, 0], // Never used the count of each building size, ah well.
   };
   const typs = [
     undefined, // The "0th" type is an empty tile.
@@ -1192,16 +1196,17 @@ const can_place = (i, typ, vis) => {
  * @returns {boolean}
  */
 const can_delete = (i) => {
+  // Unpack the tile data
   const height = Math.ceil(city.info[3 * i]);
   const typ = city.info[3 * i + 1];
   const vis = city.info[3 * i + 2];
   return (
-    height > 0
-    && can_see(city.stats.stories - vtc(vis) * height)
-    && can_see(city.stats.buildings - vtc(vis))
-    && can_see(city.stats.typs[typ]?.stories - vtc(vis) * height)
-    && can_see(city.stats.typs[typ]?.buildings - vtc(vis))
-    && can_see(city.stats.typs[typ]?.size[vtc(vis)] - 1)
+    height > 0 // Check if there's a building here
+    && can_see(city.stats.stories - vtc(vis) * height) // Check if we're not going to hit THAT NUMBER in the stories count after removing this building
+    && can_see(city.stats.buildings - vtc(vis)) // Check if we're not going to hit THAT NUMBER in the buildings count after removing this building
+    && can_see(city.stats.typs[typ]?.stories - vtc(vis) * height) // Check if we're not going to hit THAT NUMBER in the type's stories count after removing this building
+    && can_see(city.stats.typs[typ]?.buildings - vtc(vis)) // Check if we're not going to hit THAT NUMBER in the type's buildings count after removing this building
+    && can_see(city.stats.typs[typ]?.size[vtc(vis)] - 1) // Check if we're not going to hit THAT NUMBER in the type's size count after removing this building
   );
 };
 
@@ -1355,7 +1360,7 @@ const system_frame = (dt) => {
  */
 const keydown = () => {
   // Change-tool controls
-  if (kd(';') && !LVLSELWIN.open) setdemo(!demo());
+  if (kd(';') && !LVLSELWIN.open) setdemo(!demo()); // Toggle demo mode
   if (kd('`')) chtool(0);
   if (kd('0')) chtool(0);
   if (kd('1')) chtool(1);
@@ -1367,8 +1372,8 @@ const keydown = () => {
   if (kd('7')) chtool(7);
   if (kd('8')) chtool(8);
   if (kd('9')) chtool(9);
-  // Pause/resume the render loop (supposed to bring up a pause menu, but...)
   if (kd('p') && map.sidel) {
+    // Pause/resume the render loop (supposed to bring up a pause menu, but...)
     if (rafId !== null) {
       cancelAnimationFrame(rafId);
       rafId = null;
@@ -1377,6 +1382,7 @@ const keydown = () => {
     }
   }
   if (kd('escape')) {
+    // Open/close the level select window
     if (LVLSELWIN.open) {
       LVLSELWIN.close();
     } else {
@@ -1459,14 +1465,13 @@ const ael = (e, t, f) => e.addEventListener(t, f);
 
 // If the user moves the mouse, update the mouse position
 ael(CV, "pointerdown", e => {
-  e.preventDefault();
-  ui.locksel = true;
-  ui.drag = e.pointerId;
-  mmovpos(e);
+  ui.locksel = true; // We've just clicked, so lock the selection
+  ui.drag = e.pointerId; // Set the drag to the pointer ID
+  mmovpos(e); // Update the mouse position
 });
-ael(CV, "pointermove", mmovpos);
+ael(CV, "pointermove", mmovpos); // If the user moves the mouse, update the mouse position
 ael(CV, "pointerup", e => {
-  if (ui.drag == e.pointerId) {
+  if (ui.drag == e.pointerId) { // Clear the drag on release to prevent jumping when a finger is set down elsewhere
     ui.drag = ui.mouseX = ui.mouseY = null;
   }
 });
@@ -1503,6 +1508,7 @@ for (let b of [CBTN, DBTN, PBTN, ...TOOLS]) {
   ael(b, 'mousedown', e => { if (!e.target.disabled) s(SELECT_SND); }); // Play the mousedown sound when the mouse clicks a button
 }
 ael(LVLBTN, 'click', e => {
+  // Open/close the level select window
   if (LVLSELWIN.open) {
     LVLSELWIN.close();
   } else {
@@ -1519,8 +1525,8 @@ ael(LVLBTN, 'click', e => {
 ael(PBTN, 'click', e => {
   load_builtin_map('canvas', 2); // Load an example level
   setdemo(true); // Place the game in demo mode (like old games.)
-  LVLBTN.click();
-  LVLBTN.style.display = 'block';
+  LVLBTN.click(); // Click the level select button to show the level select window
+  LVLBTN.style.display = 'block'; // Also show the level select button so users may now use it.
   init_gl(); // Get the WebGL context
   rafId = requestAnimationFrame(draw); // Start the render loop
 });
