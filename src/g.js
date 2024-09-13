@@ -1433,7 +1433,7 @@ for (let b of [CBTN, DBTN, PBTN, ...TOOLS]) {
 // =================
 
 // When the user clicks the play button
-PBTN.addEventListener('close', (e) => {
+PBTN.addEventListener('click', (e) => {
   load_builtin_map('canvas', 2); // Load an example level
   setdemo(true); // Place the game in demo mode (like old games.)
   LVLSELWIN.show(); // Show the level select window

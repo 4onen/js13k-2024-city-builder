@@ -4,6 +4,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="with=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light dark">
     <title>City Without That Number</title>
     <style>
         html,
@@ -33,6 +34,16 @@
             border-radius: 1em;
             height: 2em;
             width: 2em;
+            position: relative;
+        }
+
+        dialog {
+            position: absolute;
+            top: 30%;
+            left: 5%;
+            border-radius: 1em;
+            padding-inline: 1em;
+            border: 2px outset;
         }
 
         footer {
@@ -42,31 +53,37 @@
         }
 
         #fps {
+            /* Fix the width of the FPS display to prevent hopping around. */
             width: 3em;
         }
 
         #tlui {
+            /* "Top left" UI, except I can't tell left from right. */
             position: absolute;
             top: 0;
             right: 0;
             text-align: center;
             padding: 0.5em;
             border-bottom-left-radius: 3em;
-            background-color: azure;
+            background-color: ButtonFace;
         }
 
         #playdialog {
+            /* While I use a dialog element here, that's just to make sure
+            it's a popover. I'm actually using it as a button. */
+            display: block;
             position: absolute;
             background-color: limegreen;
-            border-radius: 3em;
             margin: auto;
-            padding: 1em;
+            width: 8em;
             font-size: 4em;
             top: 50%;
+            left: calc(50% - 4em);
             cursor: pointer;
         }
 
         #snd {
+            /* The sound checkbox -- hidden to let us make it pretty with emoji. */
             appearance: none;
             font-size: 3em;
         }
@@ -80,6 +97,7 @@
         }
 
         #cd {
+            /* The "confirm/deny" popup. */
             position: absolute;
             left: calc(50svw);
             bottom: 0;
@@ -95,6 +113,7 @@
         }
 
         #lpane {
+            /* The left-hand UI pane, for the tool list. */
             display: flex;
             flex-direction: column-reverse;
             position: absolute;
@@ -103,7 +122,8 @@
             width: 2em;
             padding-block: 1em;
             border-top-right-radius: 3em;
-            background-color: Canvas;
+            background-color: ButtonFace;
+            counter-reset: lpanebutton -1;
 
             button {
                 letter-spacing: -.7em;
@@ -112,9 +132,22 @@
                 margin-block: .1em;
                 white-space: nowrap;
             }
+
+            button::before {
+                display: block;
+                position: absolute;
+                top: 0;
+                left: 50%;
+                content: "[" counter(lpanebutton) "]";
+                counter-increment: lpanebutton;
+                font-size: .4em;
+                color: gray;
+                letter-spacing: normal;
+            }
         }
 
         .s {
+            /* Selected UI element. */
             border-color: yellow;
             background-color: yellow;
         }
@@ -125,7 +158,6 @@
 
 <body>
     <canvas></canvas>
-    <dialog id="playdialog" onclick="this.close()" open>Play</dialog>
     <div id="cd" style="display:none;">
         <button id="conf">✔</button>
         <button id="deny">🚫</button>
@@ -145,6 +177,7 @@
                 target="_blank">ZzFX🔊</a> by KilledByAPixel - MIT License
         </footer>
     </dialog>
+    <button id="playdialog" onclick="this.style.display='none'">Play</button>
 </body>
 
 </html>
