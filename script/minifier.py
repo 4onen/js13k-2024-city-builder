@@ -33,6 +33,10 @@ def minify_js(js: str) -> str:
 def minify_html(html: str) -> str:
     html = HTML_COMMENT.sub('', html)
     html = HTML_WHITESPACE.sub('><', html)
+    html = JS_AFTER_SEMICOLON.sub(';', html) # For CSS
+    html = JS_AFTER_OPEN_CURLY.sub('{', html) # For CSS
+    html = JS_AFTER_CLOSE_CURLY.sub('}', html) # For CSS
+    html = JS_COMMENT.sub('', html) # For CSS
     html = WHITESPACE.sub(' ', html)
     return html
 
