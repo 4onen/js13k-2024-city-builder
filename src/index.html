@@ -35,6 +35,12 @@
             width: 2em;
         }
 
+        footer {
+            float: right;
+            padding-inline: 1em;
+            font-size: .7em;
+        }
+
         #fps {
             width: 3em;
         }
@@ -120,18 +126,25 @@
 <body>
     <canvas></canvas>
     <dialog id="playdialog" onclick="this.close()" open>Play</dialog>
-    <div id="cd">
+    <div id="cd" style="display:none;">
         <button id="conf">✔</button>
         <button id="deny">🚫</button>
     </div>
     <div id="lpane"></div>
     <div id="tlui">
-        FPS:
-        <div id="fps">NaN</div>
+        FPS:<div id="fps">NaN</div>
         <input type="checkbox" id="snd" checked><label for="snd"
-            style="display: none;">Sound</label></input>
+            style="display:none;">Sound</label></input>
     </div>
-    <dialog id="lvlselect"></dialog>
+    <dialog id="lvlselectwin">
+        <h1>The City Without That Number</h1>
+        <p>Choose a level:</p>
+        <div id="lvlselect"></div>
+        <footer>Sound support thanks to
+            <a href="https://github.com/KilledByAPixel/ZzFX"
+                target="_blank">ZzFX🔊</a> by KilledByAPixel - MIT License
+        </footer>
+    </dialog>
 </body>
 
 </html>

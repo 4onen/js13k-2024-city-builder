@@ -72,9 +72,10 @@ const MAXHT = 4;
 /**
  * @type {Object.<string, Array<CWTNMap>>}
  * 
- * These are the builtin maps for the game. They're stored in a dictionary
- * where the keys are the category of the map and the values are arrays of
- * the maps in that category. The maps are stored in the CWTNMap format.
+ * These are the "builtin maps" (BMAPS) for the game. They're stored in a
+ * dictionary where the keys are the category of the map and the values are
+ * arrays of the maps in that category. The maps are stored in the CWTNMap
+ * format.
  */
 const BMAPS = {
   tut: [
@@ -500,10 +501,22 @@ const CV = document.querySelector('canvas');
  */
 const LPANE = document.getElementById('lpane');
 /**
- * @type {HTMLDivElement} The game play button, to force an interact event b4
- *                       playing music or sound or anything.
+ * @type {HTMLDialogElement} The level select dialog element
+ */
+const LVLSELWIN = document.getElementById('lvlselectwin');
+/**
+ * @type {HTMLDivElement} The level select dialog's content element
+ */
+const LVLSEL = document.getElementById('lvlselect');
+/**
+ * @type {HTMLDialogElement} The game play button, to force an interact event
+ *                           b4 playing music or sound or anything.
  */
 const PBTN = document.getElementById('playdialog');
+/**
+ * @type {HTMLDivElement} The confirm-deny box at the bottom of the screen.
+ */
+const CD = document.getElementById('cd');
 /**
  * @type {HTMLButtonElement} The "confirm action" button
  */
@@ -533,6 +546,10 @@ let last_timestamp = null;
  * @type {number} The number of frames rendered so far
  */
 let frame_num = 0;
+/**
+ * @type {number} The number of game ticks processed so far
+ */
+let tick_num = 0;
 /**
  * @type {number?} The last FPS value, used to smooth the FPS display
  */
@@ -617,6 +634,7 @@ let map = {};
  * - locksel: Whether to lock the selection to the hovered building this frame
  * - hovered_bldg: The ID of the building the mouse is hovering over
  * - selected_bldg: The ID of the building the user has selected, if any
+ * - have_built: Whether the user has built anything this frame
  * - drag: The drag state of the mouse
  */
 const ui = {
@@ -631,6 +649,7 @@ const ui = {
   locksel: false,
   hovered_bldg: -1,
   selected_bldg: null,
+  have_built: false,
   drag: null,
 };
 
@@ -682,6 +701,24 @@ const gtool = () => {
   const i = LPANE.querySelector(".s")?.id;
   return i ? parseInt(i.substring(4), 10) : -1;
 };
+
+/**
+ * Function to check if we're in demo mode
+ * @returns {boolean}
+ */
+const demo = () => {
+  return CD.style.display === "none";
+};
+
+/**
+ * Function to set demo mode
+ * @param {boolean} on whether to turn demo mode on or off -- true for on
+ * @returns {void}
+ */
+const setdemo = (on) => {
+  CD.style.display = on ? "none" : "block";
+};
+
 
 /**
  * Load a map from a CWTNMap object.
@@ -1135,6 +1172,7 @@ const place = (i, typ, vis) => {
 const conf = () => {
   if (!can()) return; // If we can't do the action, don't do it
   if (ui.selected_bldg == null || ui.selected_bldg < 0) return; // If we don't have a selected building, don't do it
+  ui.have_built = true; // We can do something and we're doing it
   const t = gtool(); // Get the current tool
   if (t == 0) do_delete(ui.selected_bldg); // If we're deleting, delete
   if (t == 1) city.info[3 * ui.selected_bldg] += .05; // If we're adding a story, add a story
@@ -1153,28 +1191,39 @@ const conf = () => {
  */
 const game_frame = (dt) => {
   recalc_city_stats(); // Recalculate the city stats
+  tick_num += 1;
   const maxidx = map.sidel * map.sidel; // Calculate the maximum index
-  let have_built = !kd('r'); // Store whether we're doing random building this frame
-  for (let i = 0; i < maxidx; i += 1) { // Iterate over all tiles
-    if (city.info[3 * i + 2] < 0) continue; // If the tile is erased, skip it
-    const build = !have_built && Math.random() < 0.1 / maxidx; // Calculate whether we're building this tile or elsewhere
-    const is_new = city.info[3 * i + 1] === 0; // Calculate whether this tile is new
-    const typ = 1 + (Math.random() > 0.5); // Calculate the type of building to build
-    if (build) {
-      if (is_new) {
-        // If we're building on a new tile, build the largest we can
-        for (const vis of [3, 2, 1, 0]) {
-          if (can_place(i, typ, vis)) { // If we can't place here, skip
-            place(i, typ, vis);
-            have_built = true; // Mark that this frame has done some building
-          }
-        }
-      } else if (can_place_story(i)) {
-        // It's not new, so try placing a storey on top instead.
-        city.info[3 * i] += .05;
-        have_built = true;
+
+  // If we're not in demo mode, reset "have built" to let the user take another
+  // action. If we are in demo mode, we'll keep it set to true to stop the user
+  // doing anything apart from ending demo mode, if they're allowed to.
+  if (ui.have_built = demo()) {
+    ui.have_built = false; // Reset it to let the demo build
+    const demo_scale = (1 + 5 * kd('shift'));
+    if (tick_num % (30 / demo_scale) == 0) { // Every 30th tick, or 5th if holding shift
+
+      for (let attempts = 0; attempts < 10 && !ui.have_built; attempts += 1) {
+        // Select a random tile
+        const i = Math.floor(Math.random() * maxidx);
+        // If the tile is unselectable, continue
+        if (city.info[3 * i + 2] < 0) continue;
+        // If the tile is selectable, select it
+        ui.selected_bldg = i;
+        // Try to use our current tool on it
+        conf();
       }
+
+      if (tick_num % (120 / demo_scale) == 0 || !ui.have_built) {
+        // Every 120 ticks (20 shifted) or if we haven't built
+        // choose a new random tool
+        chtool(Math.floor(Math.random() * TOOLS.length));
+      }
+      ui.selected_bldg = null; // Deselect all
+      ui.have_built = true; // Make sure the user can't mess anything up
     }
+  }
+
+  for (let i = 0; i < maxidx; i += 1) { // Iterate over all tiles
     // Continue any ongoing construction up to the next storey threshold, then stop.
     city.info[3 * i] = Math.min(Math.ceil(city.info[3 * i]), city.info[3 * i] + dt * 2.);
   }
@@ -1208,6 +1257,7 @@ const system_frame = (dt) => {
  */
 const keydown = () => {
   // Change-tool controls
+  if (kd('r') && !LVLSELWIN.open) setdemo(!demo());
   if (kd('`')) chtool(0);
   if (kd('0')) chtool(0);
   if (kd('1')) chtool(1);
@@ -1239,6 +1289,21 @@ const system_loop = () => {
   while (ui.gtime > 0) { // While we have graphics time to process
     system_frame(SYS_DT); // Process system time in SYS_DT chunks
     ui.gtime -= SYS_DT; // Subtract the time we've processed
+  }
+};
+
+/**
+ * Fills the level select element with the levels in the game.
+ */
+const fill_levelselect = () => {
+  // At the top level, drop the game's header
+  // From the BMAPS object
+  for (const [k, v] of Object.entries(BMAPS)) {
+    // We want to present a nice UI, so we use buttons in sections with
+    // headings for each level category.
+    const sec = document.createElement('section'); // Create a new section element
+    document.createElement('h2'); // Create a new heading element
+    sec.appendChild(document.createTextNode(k)); // Set the text of the heading to the category name
   }
 };
 
@@ -1324,7 +1389,9 @@ for (let b of [CBTN, DBTN, PBTN, ...TOOLS]) {
 
 // When the user clicks the play button
 PBTN.addEventListener('close', (e) => {
-  load_builtin_map('tut', 0); // Load the first map
+  load_builtin_map('canvas', 2); // Load an example level
+  setdemo(true); // Place the game in demo mode (like old games.)
+  LVLSELWIN.showModal(); // Show the level select window
   init_gl(); // Get the WebGL context
   rafId = requestAnimationFrame(draw); // Start the render loop
 });
