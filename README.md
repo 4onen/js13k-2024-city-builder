@@ -3,6 +3,20 @@
 
 ![4-tile city logo](dev_screenshots/day13_logo.png)
 
+# A WebGL2 city-building puzzler in 9,965 bytes. 
+
+This is the city without THAT NUMBER. Breaking the city into tiles, you may never have THAT NUMBER of anything (or any multiple of THAT NUMBER.) 12 buildings built? You may only place a new double or quad. 11 stories across three towers? Sorry, that new double tower will have to wait until you place one more single or a quad. Also counts these statistics separately between the two kinds of buildings -- residential versus commercial.
+
+Controls:
+* <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or Arrow keys or Click&Drag: Pan around the map
+* <kbd>Shift</kbd>: Accelerate movement, accelerate demo mode
+* Number keys: Select tool
+* Click: Select a target tile
+* <kbd>E</kbd>: Confirm placement
+* <kbd>Q</kbd>: Rotate double buildings (You can also rotate by clicking on the tool again.)
+* <kbd>;</kbd>: Toggle an automatic random placement of buildings "demo mode."
+* <kbd>Escape</kbd>: Open/close the level select menu. (You can also open the menu by clicking on the level hamburger icon.)
+
 # Resources
 
 ## Programming Articles
@@ -28,6 +42,8 @@
     * [StackOverflow - Smoothed FPS Counter](https://stackoverflow.com/a/7796547/9157179)
 
 ## Music Inspiration
+
+First, yes, the game has no music. Unfortunately I'm no musician and couldn't put something together for the game, despite still having the room in my submission package. However, these were my ideas for the music:
 
 As I'm building a city builder, I have to go back to the city builder I grew up on: SimCity 4 Deluxe Edition. I don't want to replicate the soundtrack exactly, and I've heard it so many times I practically have it all memorized, but I found the slightly slower bpm of the live cover of "By The Bay" [here](https://www.youtube.com/watch?v=qR4IIKbRflQ) to be a good split from my memory to help me think about it. I also found Charles Cornell's analysis video on the [Sims 1 Building Mode 1 track](https://www.youtube.com/watch?v=IJMds3jT7c8) to be extremely valuable, as those building mode tracks were also a big part of my childhood and fit well into the smaller-scale city builder I'm building.
 
@@ -238,3 +254,7 @@ I also finally made my JS13K entry page, using a cropped form of the logo above 
 Sooooon! Aaaaaa! 😱 The UI tool selection and conf/deny works now, but I'm still missing level select! And levels! And music! I can't beleive everything I _do_ have fits in just 9,385 bytes!
 
 ## Day 31: 2024-09-12
+
+I don't even know how to write this. It's 2:16am, I just submitted, and I'm still absolutely wired from all the changes and features I did get working. I wish I'd known I had more room because I think I would have devoted more time and added even more features... but honestly this 10k limit challenge I set myself bred even more interesting results than I could have imagined starting this competition. Like, heck, I didn't think it would be a puzzler or a mobile game -- I was aiming for a proper city simulator! But I'm happy with these results. It's a complete experience, even if it lacks save data or custom level insertion or achievements. I think my game last time I partcipated showed that really isn't necessary, and being able to do this instanced rendering work feels like progress.
+
+I hope y'all enjoy!
