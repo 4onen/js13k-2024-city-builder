@@ -503,6 +503,10 @@ const CV = document.querySelector('canvas');
  */
 const LPANE = document.getElementById('lpane');
 /**
+ * @type {HTMLDivElement} The right UI pane element for the game stats
+ */
+const RPANE = document.getElementById('rpane');
+/**
  * @type {HTMLDialogElement} The level select dialog element
  */
 const LVLSELWIN = document.getElementById('lvlselectwin');
@@ -1080,6 +1084,30 @@ const recalc_city_stats = () => {
   }
   // Now assign this data back to the city object
   t.typs = typs;
+
+  /**
+   * Generates a table row element with a header and a value.
+   * @param {string} h Header for the row
+   * @param {number} v Value for the row
+   * @returns 
+   */
+  const tr = (h, v) => {
+    const r = document.createElement('tr');
+    const th = document.createElement('td');
+    th.textContent = h;
+    const td = document.createElement('td');
+    td.textContent = v;
+    r.append(th, td);
+    return r;
+  };
+  RPANE.replaceChildren(
+    tr('◼:', t.buildings),
+    tr('🏗️:', t.stories),
+    tr('◼🏠:', t.typs[1].buildings),
+    tr('🏗️🏠:', t.typs[1].stories),
+    tr('◼🛒:', t.typs[2].buildings),
+    tr('🏗️🛒:', t.typs[2].stories),
+  );
   city.stats = t;
 };
 
@@ -1448,7 +1476,7 @@ for (let b of [CBTN, DBTN, PBTN, ...TOOLS]) {
   ael(b, 'mousedown', e => { if (!e.target.disabled) s(SELECT_SND); }); // Play the mousedown sound when the mouse clicks a button
 }
 ael(LVLBTN, 'click', e => {
-  if (LVLSELWIN.open && !demo()) {
+  if (LVLSELWIN.open) {
     LVLSELWIN.close();
   } else {
     fill_levelselect();
