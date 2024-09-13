@@ -83,7 +83,7 @@ const BMAPS = {
     { name: "dbl", sidel: 2, dat: "000000", tools: [0, 3] },
     { name: "crs", sidel: 3, dat: "F000F0000000F000F0", tools: [0, 1, 2, 3] },
     { name: "qd", sidel: 3, dat: "F000F0000000F00000", tools: [0, 1, 2, 4] },
-    { name: "lim", sidel: 4, dat: "14141414141414141414141400000000", tools: [0, 2, 6] }
+    { name: "lim", sidel: 5, dat: "141414141414141414141414000000000000", tools: [0, 2, 6] }
   ],
   puzzle: [
     { name: "kpd", sidel: 3, tools: [0, 1, 5, 6] },
